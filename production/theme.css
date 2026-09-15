@@ -265,3 +265,18 @@ body.inner .section-heading:not(.seen),body.inner .service-grid:not(.seen),body.
 body.inner .service-grid article,body.inner .editorial-list article,body.inner .facts>div,body.inner .steps li,body.inner .checklist li,body.inner .quote-card,body.inner .clarity-card{opacity:1;transform:none}
 body.inner .service-grid:not(.seen) article,body.inner .editorial-list:not(.seen) article,body.inner .facts:not(.seen)>div,body.inner .steps:not(.seen) li,body.inner .checklist:not(.seen) li,body.inner .quote-card-grid:not(.seen) .quote-card,body.inner .clarity-card-grid:not(.seen) .clarity-card{transform:translateY(12px)}
 @media(prefers-reduced-motion:reduce){body.inner .section-heading,body.inner .service-grid,body.inner .editorial-list,body.inner .facts,body.inner .steps,body.inner .checklist,body.inner .contact-grid,body.inner .quote-card-grid,body.inner .clarity-card-grid,body.inner .service-grid article,body.inner .editorial-list article,body.inner .facts>div,body.inner .steps li,body.inner .checklist li,body.inner .quote-card,body.inner .clarity-card{transform:none}}
+
+/* Mobile inner-hero corrections: keep the title readable and both actions visible. */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+@media(max-width:600px){
+ body.inner .page-hero{min-height:620px;padding:132px 0 112px}
+ body.inner .page-hero__inner{width:calc(100% - 48px);max-width:none}
+ body.inner .page-hero .breadcrumbs,body.inner[data-page="pricing"] .page-hero .breadcrumbs{justify-content:flex-start;margin-bottom:22px;text-align:left}
+ body.inner .page-hero h1,body.inner[data-page="pricing"] .page-hero h1{max-width:13ch;font-size:clamp(34px,9vw,54px);line-height:1.08;letter-spacing:-.045em;text-align:left}
+ body.inner .page-hero h1 .secondary-line{margin-top:4px}
+ body.inner .page-hero .lead,body.inner[data-page="pricing"] .page-hero .lead{max-width:34ch;margin:18px 0 0;font-size:15px;line-height:1.65;text-align:left}
+ body.inner .page-hero .actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:22px}
+ body.inner .page-hero .actions .button{width:100%;min-width:0;min-height:46px;padding:10px 7px;font-size:11px;line-height:1.25;white-space:nowrap}
+ body.inner .page-hero .actions .button span[aria-hidden="true"]{font-size:14px}
+ body.inner .page-hero__tagline{right:24px;bottom:20px;left:24px;padding:9px 10px;gap:7px;font-size:10px;white-space:nowrap}
+}

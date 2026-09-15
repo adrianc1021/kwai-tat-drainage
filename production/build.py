@@ -161,7 +161,7 @@ def render(page,public=False):
  body+='</h1>'+copy('lead',page['lead'],'p','lead')
  if not home:body+=actions('hero')
  if home:body+='<ul class="tags" aria-label="常見問題位置">'+''.join('<li>'+t+'</li>' for t in ['坐廁','鋅盆','浴室地台','廚房油隔','沙井','大廈公共渠'])+'</ul>'+actions('hero')+copy('hero-condition','24 小時接受緊急查詢。客服確認安排後，會提供預計到場時間。','p','condition')+'</div><p class="hero-caption">管段及攝影材質示意，非公司工程紀錄</p></section></div>'
- else:body+='<div class="page-hero__tagline" aria-label="查詢提示"><span>先說位置，再安排處理方法</span><span aria-hidden="true">／</span><span>24 小時接受查詢</span></div></div></section>'
+ else:body+='</div><div class="page-hero__tagline" aria-label="查詢提示"><span>先說位置，再安排處理方法</span><span aria-hidden="true">／</span><span>24 小時接受查詢</span></div></section>'
  for section_index,sec in enumerate(page['sections']):body+=render_section(sec,slug,section_index)
  if not home:
   if page.get('parent')=='services':body+='<aside class="section related-services"><div class="container"><h2>其他服務</h2><div class="related-links">'+''.join(link(t,n) for t,n,_ in SERVICES if t!=slug)+'</div></div></aside>'
