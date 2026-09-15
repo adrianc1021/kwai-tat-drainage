@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="深色渠務材質背景">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0b1c4d"/>
+      <stop offset="0.65" stop-color="#101315"/>
+      <stop offset="1" stop-color="#050606"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="76%" cy="30%" r="42%">
+      <stop offset="0" stop-color="#a7c957" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#a7c957" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#glow)"/>
+  <path d="M1080 100h330v120h-150v270h-180z" fill="none" stroke="#a7c957" stroke-opacity=".22" stroke-width="3"/>
+</svg>

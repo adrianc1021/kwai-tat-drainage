@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: kwai-tat-drainage
+    runtime: static
+    buildCommand: "python3 production/build.py --public"
+    staticPublishPath: production/site
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: SITE_URL
+        sync: false
+      - key: SITE_PHONE
+        sync: false
+      - key: SITE_WHATSAPP
+        sync: false
+      - key: PUBLISH_CONFIRMED
+        sync: false
