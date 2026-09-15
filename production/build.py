@@ -25,12 +25,17 @@ def photo(key,slot,eager=False):
  alt={'hero':'沙井蓋金屬紋理','nozzle':'金屬噴嘴素材近照','cctv':'渠管內壁素材示意','tunnel':'渠管內部素材示意'}[key]
  return f'<img src="/media-assets/{key}.webp" alt="{alt}，非公司工程紀錄" data-media="{slot}" width="1400" height="1000" loading="{"eager" if eager else "lazy"}" decoding="async"'+(' fetchpriority="high"' if eager else '')+'>'
 SERVICES=[('drainage','家居通渠','坐廁、鋅盆、浴室或地台去水不暢，先了解受影響的位置。'),('high-pressure','高壓水力清洗','了解高壓清洗用途，以及使用前需要確認的現場條件。'),('cctv','CCTV 渠道檢查','渠道反覆淤塞或原因不明，可先查詢鏡頭檢查。'),('commercial','商業及大廈渠務','商舖、食肆或公共渠道問題，先確認範圍及出入安排。')]
-PAGE_VISUALS={'services':'nozzle','commercial':'tunnel','pricing':'hero','areas':'hero','about':'cctv','faq':'tunnel','contact':'hero','privacy':'tunnel'}
+PAGE_VISUALS={'services':'nozzle','drainage':'hero','high-pressure':'nozzle','cctv':'cctv','commercial':'tunnel','pricing':'hero','areas':'hero','about':'cctv','faq':'tunnel','contact':'hero','privacy':'tunnel'}
 STEPS=[('提供資料','說明地址、淤塞位置及現場情況。'),('客服了解情況','整理資料，確認查詢及出入安排。'),('確認到場安排','客服確認人手後，提供預計到場時間。'),('到場檢查','師傅了解現場，再說明可行方法及報價。'),('確認後施工','確認工程內容和收費後，才開始施工。')]
 PROBLEMS=[('坐廁淤塞','沖水後水位升高還是退水慢？其他去水口是否正常？','drainage'),('鋅盆或廚房去水慢','積水持續多久？有沒有異味或曾清理去水隔？','drainage'),('浴室或地台淤塞','哪個去水口積水？洗澡後會否長時間未能去水？','drainage'),('渠道反覆淤塞','上次何時處理？採用甚麼方法？多久後再次淤塞？','cctv'),('商舖或食肆渠道','哪些去水位置受影響？有沒有油隔及營業時段限制？','commercial'),('大廈公共渠道','受影響的樓層及公共位置在哪裏？管理處是否已知悉？','commercial')]
-def render_section(sec,slug):
+def render_section(sec,slug,section_index=0):
  key=sec['id'];kind=sec.get('kind','');out=f'<section class="section {"dark-section" if kind=="problems" else ""}" id="{key}" data-section="{ESC(sec["heading"].replace(chr(10)," "))}"><div class="container">'
- out+='<div class="section-heading">'+copy(key+'-title',sec['heading'],'h2')+'<div>'+''.join(copy(key+'-intro-'+str(i),b) for i,b in enumerate(sec.get('body',[])))+'</div></div>'
+ visual=PAGE_VISUALS.get(slug) if section_index==0 and slug not in ('index','privacy') else None
+ side='<div class="section-heading__side">'+''.join(copy(key+'-intro-'+str(i),b) for i,b in enumerate(sec.get('body',[])))
+ if visual:
+  side+=f'<figure class="section-heading-media">{photo(visual,slug+"-section",False)}<figcaption>渠務材質示意</figcaption></figure>'
+ side+='</div>'
+ out+='<div class="section-heading">'+copy(key+'-title',sec['heading'],'h2')+side+'</div>'
  if kind=='services':
   out+='<div class="service-grid">'
   for target,title,body in SERVICES:out+='<article>'+copy(key+'-'+target+'-title',title,'h3')+copy(key+'-'+target+'-body',body)+link(target,'了解'+title)+'</article>'
@@ -156,8 +161,8 @@ def render(page,public=False):
  body+='</h1>'+copy('lead',page['lead'],'p','lead')
  if not home:body+=actions('hero')
  if home:body+='<ul class="tags" aria-label="常見問題位置">'+''.join('<li>'+t+'</li>' for t in ['坐廁','鋅盆','浴室地台','廚房油隔','沙井','大廈公共渠'])+'</ul>'+actions('hero')+copy('hero-condition','24 小時接受緊急查詢。客服確認安排後，會提供預計到場時間。','p','condition')+'</div><p class="hero-caption">管段及攝影材質示意，非公司工程紀錄</p></section></div>'
- else:body+='</div></section>'
- for sec in page['sections']:body+=render_section(sec,slug)
+ else:body+='<div class="page-hero__tagline" aria-label="查詢提示"><span>先說位置，再安排處理方法</span><span aria-hidden="true">／</span><span>24 小時接受查詢</span></div></div></section>'
+ for section_index,sec in enumerate(page['sections']):body+=render_section(sec,slug,section_index)
  if not home:
   if page.get('parent')=='services':body+='<aside class="section related-services"><div class="container"><h2>其他服務</h2><div class="related-links">'+''.join(link(t,n) for t,n,_ in SERVICES if t!=slug)+'</div></div></aside>'
  if slug not in ('contact','privacy'):
