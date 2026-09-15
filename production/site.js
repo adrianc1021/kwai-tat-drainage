@@ -1,10 +1,8 @@
 'use strict';
 
 (() => {
-  const header = document.querySelector('.site-header');
-  const hero = document.querySelector('.hero');
-  const ruler = document.querySelector('.ruler');
-  const value = document.querySelector('.ruler-value');
+  const header = document.querySelector('.floating-nav');
+  const hero = document.querySelector('.page-hero');
   const menu = document.querySelector('.menu-toggle');
   const nav = document.querySelector('#site-nav');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -13,7 +11,6 @@
     if (!menu || !nav) return;
     menu.setAttribute('aria-expanded', 'false');
     nav.classList.remove('open');
-    menu.textContent = '選單';
   };
 
   if (menu && nav) {
@@ -21,7 +18,6 @@
       const open = menu.getAttribute('aria-expanded') !== 'true';
       menu.setAttribute('aria-expanded', String(open));
       nav.classList.toggle('open', open);
-      menu.textContent = open ? '關閉' : '選單';
     });
     menu.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') closeMenu();
@@ -36,12 +32,7 @@
     ticking = false;
     const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
     const progress = Math.min(1, scrollY / max);
-    ruler?.style.setProperty('--read', `${progress * 100}%`);
-    if (value) value.textContent = `${Math.round(progress * 100)}%`;
-    if (header && hero) {
-      const dark = hero.getBoundingClientRect().bottom < 110;
-      header.classList.toggle('light', dark);
-    }
+    if (header) header.classList.toggle('floating-nav--scrolled', scrollY > 72);
     for (const section of sections) {
       section.classList.toggle(
         'in-view',
@@ -64,7 +55,7 @@
       if (entry.isIntersecting) entry.target.classList.add('seen');
     });
   }, { threshold: 0.15 });
-  document.querySelectorAll('.section-heading,.service-grid,.editorial-list,.steps,.contact-grid').forEach((element) => observer.observe(element));
+  document.querySelectorAll('.page-hero__inner,.section-heading,.service-grid,.editorial-list,.facts,.steps,.checklist,.contact-grid,.quote-card-grid,.clarity-card-grid').forEach((element) => observer.observe(element));
 
   document.querySelectorAll('[data-channel]').forEach((link) => {
     link.addEventListener('click', () => {

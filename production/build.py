@@ -17,11 +17,15 @@ def cta(kind='whatsapp',label=None,location='body'):
  url=('https://wa.me/'+num+'?text='+quote('你好，我想查詢通渠服務。')) if num and kind=='whatsapp' else ('tel:+'+num if num else '/contact.html#'+kind)
  symbol='↗' if kind=='whatsapp' else '↗'
  return f'<a class="button {"primary" if kind=="whatsapp" else "secondary"}" href="{ESC(url)}" data-channel="{kind}" data-location="{location}"'+(f' data-event="{kind}_click"' if num else '')+f' aria-label="{ESC(label)}">{ESC(label)}<span aria-hidden="true">{symbol}</span></a>'
+def phone_display(num):
+ if len(num)==11 and num.startswith('852'): return '+852 '+num[3:7]+' '+num[7:]
+ return '+'+num if num else '電話查詢'
 def actions(location='body'):return '<div class="actions">'+cta(location=location)+cta('telephone',location=location)+'</div>'
 def photo(key,slot,eager=False):
  alt={'hero':'沙井蓋金屬紋理','nozzle':'金屬噴嘴素材近照','cctv':'渠管內壁素材示意','tunnel':'渠管內部素材示意'}[key]
  return f'<img src="/media-assets/{key}.webp" alt="{alt}，非公司工程紀錄" data-media="{slot}" width="1400" height="1000" loading="{"eager" if eager else "lazy"}" decoding="async"'+(' fetchpriority="high"' if eager else '')+'>'
 SERVICES=[('drainage','家居通渠','坐廁、鋅盆、浴室或地台去水不暢，先了解受影響的位置。'),('high-pressure','高壓水力清洗','了解高壓清洗用途，以及使用前需要確認的現場條件。'),('cctv','CCTV 渠道檢查','渠道反覆淤塞或原因不明，可先查詢鏡頭檢查。'),('commercial','商業及大廈渠務','商舖、食肆或公共渠道問題，先確認範圍及出入安排。')]
+PAGE_VISUALS={'services':'nozzle','commercial':'tunnel','pricing':'hero','areas':'hero','about':'cctv','faq':'tunnel','contact':'hero','privacy':'tunnel'}
 STEPS=[('提供資料','說明地址、淤塞位置及現場情況。'),('客服了解情況','整理資料，確認查詢及出入安排。'),('確認到場安排','客服確認人手後，提供預計到場時間。'),('到場檢查','師傅了解現場，再說明可行方法及報價。'),('確認後施工','確認工程內容和收費後，才開始施工。')]
 PROBLEMS=[('坐廁淤塞','沖水後水位升高還是退水慢？其他去水口是否正常？','drainage'),('鋅盆或廚房去水慢','積水持續多久？有沒有異味或曾清理去水隔？','drainage'),('浴室或地台淤塞','哪個去水口積水？洗澡後會否長時間未能去水？','drainage'),('渠道反覆淤塞','上次何時處理？採用甚麼方法？多久後再次淤塞？','cctv'),('商舖或食肆渠道','哪些去水位置受影響？有沒有油隔及營業時段限制？','commercial'),('大廈公共渠道','受影響的樓層及公共位置在哪裏？管理處是否已知悉？','commercial')]
 def render_section(sec,slug):
@@ -132,26 +136,27 @@ def inject_home_head(path,public=False):
  path.write_text(document)
 def render(page,public=False):
  slug=page['slug'];home=slug=='index';canonical=DATA.get('site_url','').rstrip('/')+href(slug)
- title=ESC(page['title']);desc=ESC(page['description']);nav=[('services','通渠服務'),('pricing','報價流程'),('areas','服務地區'),('about','關於快達通渠'),('faq','常見問題')]
+ title=ESC(page['title']);desc=ESC(page['description']);nav=[('/#problems','問題分流'),('/#services','服務'),('/about.html','關於快達通渠'),('/pricing.html','報價流程'),('/#faq','常見問題')]
  head=f'<!doctype html><html lang="zh-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101416"><title>{title}</title><meta name="description" content="{desc}"><meta name="author" content="{ESC(DATA["brand"])}"><meta name="robots" content="{"index,follow" if public else "noindex,nofollow"}"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/theme.css"><link rel="preload" as="font" type="font/ttf" href="/media-assets/noto-hk.ttf" crossorigin><meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:type" content="website"><meta property="og:locale" content="zh_HK"><meta property="og:site_name" content="{ESC(DATA["brand"])}"><meta name="twitter:card" content="summary">'
  if DATA.get('site_url'):
   head+=f'<link rel="canonical" href="{ESC(canonical)}"><meta property="og:url" content="{ESC(canonical)}"><meta property="og:image" content="{ESC(DATA["site_url"].rstrip("/")+"/video-poster.jpg")}"><meta name="twitter:image" content="{ESC(DATA["site_url"].rstrip("/")+"/video-poster.jpg")}">' 
  head+=schema(page)+'</head>'
- body=f'<body data-page="{slug}" class="{"home" if home else "inner"}"><a class="skip-link" href="#main">跳至主要內容</a><header class="site-header"><div class="ruler" role="progressbar" aria-label="閱讀進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span><i></i></div><span class="ruler-value" aria-hidden="true">0%</span><a class="brand" href="/" aria-label="快達通渠首頁"><span>快達通渠</span></a><nav id="site-nav" aria-label="主要導航">'
- for target,n in nav:body+=f'<a href="{href(target)}"'+(' aria-current="page"' if slug==target or page.get('parent')==target else '')+f'>{n}</a>'
- body+='</nav>'+link('contact','聯絡查詢','button header-contact')+'<button class="menu-toggle" aria-controls="site-nav" aria-expanded="false">選單</button></header><main id="main">'
+ body=f'<body data-page="{slug}" class="{"home" if home else "inner"}"><a class="skip-link" href="#main">跳至主要內容</a><header class="floating-nav"><div class="nav-inner"><a class="brand-mark" href="/" aria-label="快達通渠首頁"><span class="brand-mark__dot" aria-hidden="true"></span><span>快達通渠</span></a><nav id="site-nav" class="desktop-nav" aria-label="主要導航">'
+ for url,n in nav:body+=f'<a href="{url}"'+(' aria-current="page"' if n==page['name'] or (n=='服務' and (slug=='services' or page.get('parent')=='services')) else '')+f'>{n}</a>'
+ body+='</nav><div class="nav-actions"><a class="nav-phone" href="tel:+'+ESC(DATA.get('telephone',''))+'" aria-label="致電快達通渠">'+ESC(phone_display(DATA.get('telephone','')) )+'</a>'+cta('whatsapp','WhatsApp','header')+'<button class="menu-toggle" type="button" aria-controls="site-nav" aria-expanded="false"><span class="sr-only">開啟選單</span><span aria-hidden="true"></span><span aria-hidden="true"></span></button></div></div></header><main id="main">'
  if home:
   body+='<div class="hero-stage"><section class="hero" data-section="首頁"><div class="hero-media">'+photo('hero','home-hero',True)+'</div><img class="pipe-art" src="/media-assets/pipe.svg" width="1000" height="700" alt="" aria-hidden="true"><div class="hero-copy container">'
  else:
-  body+='<section class="page-hero container"><nav class="breadcrumbs" aria-label="所在位置"><a href="/">首頁</a><span aria-hidden="true">／</span>'
+  visual=page.get('image') or PAGE_VISUALS.get(slug,'hero')
+  body+='<section class="page-hero"><div class="page-hero__media" aria-hidden="true">'+photo(visual,slug+'-hero',True)+'</div><div class="container page-hero__inner"><nav class="breadcrumbs" aria-label="所在位置"><a href="/">首頁</a><span aria-hidden="true">／</span>'
   if page.get('parent'):body+=link(page['parent'],PAGES[page['parent']]['name'])+'<span aria-hidden="true">／</span>'
   body+='<span aria-current="page">'+ESC(page['name'])+'</span></nav>'
  body+=copy('eyebrow',page['eyebrow'],'p','eyebrow')+'<h1>'
  for i,line in enumerate(page['heading']):body+=copy('heading-'+str(i),line,'span','title-line'+(' secondary-line' if i else ''))
  body+='</h1>'+copy('lead',page['lead'],'p','lead')
+ if not home:body+=actions('hero')
  if home:body+='<ul class="tags" aria-label="常見問題位置">'+''.join('<li>'+t+'</li>' for t in ['坐廁','鋅盆','浴室地台','廚房油隔','沙井','大廈公共渠'])+'</ul>'+actions('hero')+copy('hero-condition','24 小時接受緊急查詢。客服確認安排後，會提供預計到場時間。','p','condition')+'</div><p class="hero-caption">管段及攝影材質示意，非公司工程紀錄</p></section></div>'
- else:body+='</section>'
- if page.get('image'):body+='<figure class="page-image container">'+photo(page['image'],slug+'-image')+'<figcaption>素材示意，非快達通渠實際工程或設備照片</figcaption></figure>'
+ else:body+='</div></section>'
  for sec in page['sections']:body+=render_section(sec,slug)
  if not home:
   if page.get('parent')=='services':body+='<aside class="section related-services"><div class="container"><h2>其他服務</h2><div class="related-links">'+''.join(link(t,n) for t,n,_ in SERVICES if t!=slug)+'</div></div></aside>'
