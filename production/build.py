@@ -25,7 +25,7 @@ def photo(key,slot,eager=False):
  alt={'hero':'沙井蓋金屬紋理','nozzle':'金屬噴嘴素材近照','cctv':'渠管內壁素材示意','tunnel':'渠管內部素材示意'}[key]
  return f'<img src="/media-assets/{key}.webp" alt="{alt}，非公司工程紀錄" data-media="{slot}" width="1400" height="1000" loading="{"eager" if eager else "lazy"}" decoding="async"'+(' fetchpriority="high"' if eager else '')+'>'
 SERVICES=[('drainage','家居通渠','坐廁、鋅盆、浴室或地台去水不暢，先了解受影響的位置。'),('high-pressure','高壓水力清洗','了解高壓清洗用途，以及使用前需要確認的現場條件。'),('cctv','CCTV 渠道檢查','渠道反覆淤塞或原因不明，可先查詢鏡頭檢查。'),('commercial','商業及大廈渠務','商舖、食肆或公共渠道問題，先確認範圍及出入安排。')]
-PAGE_VISUALS={'services':'nozzle','drainage':'hero','high-pressure':'nozzle','cctv':'cctv','commercial':'tunnel','pricing':'hero','areas':'hero','about':'cctv','faq':'tunnel','contact':'hero','privacy':'tunnel'}
+PAGE_VISUALS={'services':'nozzle','drainage':'hero','high-pressure':'nozzle','cctv':'cctv','commercial':'tunnel','pricing':'hero','areas':'hero','cases':'cctv','tips':'nozzle','about':'cctv','faq':'tunnel','contact':'hero','privacy':'tunnel'}
 STEPS=[('提供資料','說明地址、淤塞位置及現場情況。'),('客服了解情況','整理資料，確認查詢及出入安排。'),('確認到場安排','客服確認人手後，提供預計到場時間。'),('到場檢查','師傅了解現場，再說明可行方法及報價。'),('確認後施工','確認工程內容和收費後，才開始施工。')]
 PROBLEMS=[('坐廁淤塞','沖水後水位升高還是退水慢？其他去水口是否正常？','drainage'),('鋅盆或廚房去水慢','積水持續多久？有沒有異味或曾清理去水隔？','drainage'),('浴室或地台淤塞','哪個去水口積水？洗澡後會否長時間未能去水？','drainage'),('渠道反覆淤塞','上次何時處理？採用甚麼方法？多久後再次淤塞？','cctv'),('商舖或食肆渠道','哪些去水位置受影響？有沒有油隔及營業時段限制？','commercial'),('大廈公共渠道','受影響的樓層及公共位置在哪裏？管理處是否已知悉？','commercial')]
 def render_section(sec,slug,section_index=0):
@@ -67,6 +67,21 @@ def render_section(sec,slug,section_index=0):
   out+='<div class="clarity-card-grid">'
   for i,card in enumerate(sec.get('cards',[])):
    out+='<article class="clarity-card"><span class="clarity-card__number">'+f'{i+1:02d}'+'</span><h3>'+ESC(card.get('title',''))+'</h3><p>'+ESC(card.get('body',''))+'</p></article>'
+  out+='</div>'
+ if kind=='media-cards':
+  variant=sec.get('variant','')
+  out+='<div class="media-card-grid'+((' media-card-grid--'+ESC(variant)) if variant else '')+'">'
+  for i,card in enumerate(sec.get('cards',[])):
+   image_key=card.get('image','hero')
+   label=card.get('label','')
+   out+='<article class="media-card">'
+   out+='<div class="media-card__media">'+photo(image_key,slug+'-'+key+'-'+str(i),False)
+   if label:out+='<span class="media-card__label">'+ESC(label)+'</span>'
+   out+='<span class="media-card__index">'+f'{i+1:02d}'+'</span></div>'
+   out+='<div class="media-card__content">'+copy(key+'-card-'+str(i)+'-title',card.get('title',''),'h3')+copy(key+'-card-'+str(i)+'-body',card.get('body',''))
+   target=card.get('href')
+   if target:out+=link(target,card.get('link','了解詳情'))
+   out+='</div></article>'
   out+='</div>'
  if kind=='faq':
   out+='<div class="faq-list">'
@@ -111,6 +126,8 @@ def schema(page):
   graph.append({'@type':'FAQPage','@id':page_url+'#faq','url':page_url,'name':page['title'],'inLanguage':'zh-HK','mainEntity':[{'@type':'Question','name':q,'acceptedAnswer':{'@type':'Answer','text':a}} for q,a in DATA['faq']]})
  if page['slug']=='pricing':
   graph.append({'@type':'HowTo','@id':page_url+'#howto','name':'快達通渠報價流程','description':page['lead'],'url':page_url,'inLanguage':'zh-HK','step':[{'@type':'HowToStep','position':i+1,'name':title,'text':body,'url':page_url+'#process'} for i,(title,body) in enumerate(STEPS)]})
+ if page['slug'] in ('cases','tips','areas'):
+  graph.append({'@type':'CollectionPage','@id':page_url+'#collection','name':page['name'],'description':page['description'],'url':page_url,'inLanguage':'zh-HK','isPartOf':{'@id':website['@id']}})
  return '<script type="application/ld+json">'+json.dumps({'@context':'https://schema.org','@graph':graph},ensure_ascii=False).replace('<','\\u003c')+'</script>'
 
 def _upsert_meta(document, pattern, tag):
@@ -141,7 +158,7 @@ def inject_home_head(path,public=False):
  path.write_text(document)
 def render(page,public=False):
  slug=page['slug'];home=slug=='index';canonical=DATA.get('site_url','').rstrip('/')+href(slug)
- title=ESC(page['title']);desc=ESC(page['description']);nav=[('/#problems','問題分流'),('/#services','服務'),('/about.html','關於快達通渠'),('/pricing.html','報價流程'),('/#faq','常見問題')]
+ title=ESC(page['title']);desc=ESC(page['description']);nav=[('/#problems','問題分流'),('/#services','服務'),('/about.html','關於快達通渠'),('/pricing.html','報價流程'),('/cases.html','工程案例'),('/areas.html','服務地區'),('/tips.html','通渠小知識'),('/#faq','常見問題')]
  head=f'<!doctype html><html lang="zh-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101416"><title>{title}</title><meta name="description" content="{desc}"><meta name="author" content="{ESC(DATA["brand"])}"><meta name="robots" content="{"index,follow" if public else "noindex,nofollow"}"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/theme.css"><link rel="preload" as="font" type="font/ttf" href="/media-assets/noto-hk.ttf" crossorigin><meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:type" content="website"><meta property="og:locale" content="zh_HK"><meta property="og:site_name" content="{ESC(DATA["brand"])}"><meta name="twitter:card" content="summary">'
  if DATA.get('site_url'):
   head+=f'<link rel="canonical" href="{ESC(canonical)}"><meta property="og:url" content="{ESC(canonical)}"><meta property="og:image" content="{ESC(DATA["site_url"].rstrip("/")+"/video-poster.jpg")}"><meta name="twitter:image" content="{ESC(DATA["site_url"].rstrip("/")+"/video-poster.jpg")}">' 
@@ -167,7 +184,7 @@ def render(page,public=False):
   if page.get('parent')=='services':body+='<aside class="section related-services"><div class="container"><h2>其他服務</h2><div class="related-links">'+''.join(link(t,n) for t,n,_ in SERVICES if t!=slug)+'</div></div></aside>'
  if slug not in ('contact','privacy'):
   body+='<section class="final-contact section" data-section="聯絡查詢"><div class="container final-grid"><div>'+copy('final-title','有渠道問題？\n聯絡查詢上門安排','h2')+copy('final-body','先說明位置及現場情況。客服確認後，再安排師傅。')+'</div>'+actions('footer')+'</div></section>'
- body+='</main><footer class="site-footer"><div class="container footer-grid"><div><a class="brand" href="/">快達通渠</a><p>香港通渠及渠務服務<br>24 小時接受緊急查詢</p></div><nav aria-label="服務頁面">'+''.join(link(t,n) for t,n,_ in SERVICES)+'</nav><nav aria-label="網站資訊">'+''.join(link(t,PAGES[t]['name']) for t in ['areas','pricing','about','faq','contact','privacy'])+'</nav></div><div class="container footer-bottom"><p>© 快達通渠</p>'+('<p class="preview-label">網站預覽 · 聯絡資料及正式發布設定待完成</p>' if not public else '')+'<a href="#main">返回頁首</a></div><div class="container credits"><details><summary>素材來源</summary><p>以下素材經裁切及去色處理，非快達通渠的工程、人員或設備紀錄。</p><ul><li>沙井蓋：Tomwsulcer，CC0</li><li><a href="https://commons.wikimedia.org/wiki/File:Water_jet_cutting_nozzles.jpg">金屬噴嘴：Hammelmann Oelde</a>，CC BY-SA 3.0</li><li><a href="https://commons.wikimedia.org/wiki/File:Close_up_view_inside_of_a_culvert_in_Shasta-Trinity_National_Forest.jpg">渠管內壁：Shopstone</a>，CC0</li></ul></details></div></footer><nav class="mobile-contact" aria-label="快捷聯絡">'+cta('telephone',location='mobile')+cta('whatsapp','WhatsApp 查詢','mobile')+'</nav><script src="/site.js" defer></script></body></html>'
+ body+='</main><footer class="site-footer"><div class="container footer-grid"><div><a class="brand" href="/">快達通渠</a><p>香港通渠及渠務服務<br>24 小時接受緊急查詢</p></div><nav aria-label="服務頁面">'+''.join(link(t,n) for t,n,_ in SERVICES)+'</nav><nav aria-label="網站資訊">'+''.join(link(t,PAGES[t]['name']) for t in ['areas','pricing','about','cases','tips','faq','contact','privacy'])+'</nav></div><div class="container footer-bottom"><p>© 快達通渠</p>'+('<p class="preview-label">網站預覽 · 聯絡資料及正式發布設定待完成</p>' if not public else '')+'<a href="#main">返回頁首</a></div><div class="container credits"><details><summary>素材來源</summary><p>以下素材經裁切及去色處理，非快達通渠的工程、人員或設備紀錄。</p><ul><li>沙井蓋：Tomwsulcer，CC0</li><li><a href="https://commons.wikimedia.org/wiki/File:Water_jet_cutting_nozzles.jpg">金屬噴嘴：Hammelmann Oelde</a>，CC BY-SA 3.0</li><li><a href="https://commons.wikimedia.org/wiki/File:Close_up_view_inside_of_a_culvert_in_Shasta-Trinity_National_Forest.jpg">渠管內壁：Shopstone</a>，CC0</li></ul></details></div></footer><nav class="mobile-contact" aria-label="快捷聯絡">'+cta('telephone',location='mobile')+cta('whatsapp','WhatsApp 查詢','mobile')+'</nav><script src="/site.js" defer></script></body></html>'
  return head+body
 
 def build(public=False):
@@ -192,7 +209,7 @@ def build(public=False):
   inject_home_head(OUT/'index.html',public)
  for name in ['theme.css','site.js','favicon.svg']:shutil.copyfile(ROOT/name,OUT/name)
  media=OUT/'media-assets';media.mkdir(exist_ok=True)
- for name in ['noto-hk.ttf','hero.webp','nozzle.webp','cctv.webp','pipe.svg']:shutil.copyfile(ROOT/'assets'/name,media/name)
+ for name in ['noto-hk.ttf','hero.webp','nozzle.webp','cctv.webp','tunnel.webp','pipe.svg']:shutil.copyfile(ROOT/'assets'/name,media/name)
  robots='User-agent: *\nDisallow: /manage/\nDisallow: /admin/\nDisallow: /api/\n'
  if public:robots+='Sitemap: '+DATA['site_url'].rstrip('/')+'/sitemap.xml\n'
  (OUT/'robots.txt').write_text(robots)

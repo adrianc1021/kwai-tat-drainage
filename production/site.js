@@ -55,7 +55,7 @@
       if (entry.isIntersecting) entry.target.classList.add('seen');
     });
   }, { threshold: 0.15 });
-  document.querySelectorAll('.page-hero__inner,.section-heading,.service-grid,.editorial-list,.facts,.steps,.checklist,.contact-grid,.quote-card-grid,.clarity-card-grid').forEach((element) => observer.observe(element));
+  document.querySelectorAll('.page-hero__inner,.section-heading,.service-grid,.editorial-list,.facts,.steps,.checklist,.contact-grid,.quote-card-grid,.clarity-card-grid,.media-card-grid').forEach((element) => observer.observe(element));
 
   document.querySelectorAll('[data-channel]').forEach((link) => {
     link.addEventListener('click', () => {
