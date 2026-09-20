@@ -74,7 +74,7 @@ class CMSFlowTests(TestCase):
         self.assertFalse(BlogPost.objects.filter(slug='blocked-publish').exists())
     def test_contact_configuration_validated_and_rendered(self):
         self.client.post('/manage/settings/',{'telephone':'javascript:alert(1)','whatsapp':''})
-        self.assertEqual(SiteSettings.objects.get().telephone,'')
+        self.assertEqual(SiteSettings.objects.get().telephone,'85293339580')
         self.client.post('/manage/settings/',{'telephone':'85200000000','whatsapp':'85200000000'})
         config=SiteSettings.objects.get()
         self.assertEqual(config.telephone,'85200000000')

@@ -4,8 +4,8 @@ from django.conf import settings
 
 class SiteSettings(models.Model):
     name=models.CharField('網站名稱',max_length=80,default='快達通渠')
-    telephone=models.CharField('已確認電話',max_length=20,blank=True)
-    whatsapp=models.CharField('已確認 WhatsApp',max_length=20,blank=True)
+    telephone=models.CharField('已確認電話',max_length=20,blank=True,default='85293339580')
+    whatsapp=models.CharField('已確認 WhatsApp',max_length=20,blank=True,default='85293339580')
     analytics_enabled=models.BooleanField('啟用經同意的訪問統計',default=False)
     updated_at=models.DateTimeField(auto_now=True)
     class Meta: verbose_name_plural='網站設定'

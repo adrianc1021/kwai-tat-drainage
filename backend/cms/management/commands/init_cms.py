@@ -6,7 +6,11 @@ from cms.content import PAGE_NAMES,initial
 class Command(BaseCommand):
     help='Initialize page drafts without replacing existing edits.'
     def handle(self,*args,**options):
-        SiteSettings.objects.get_or_create(pk=1)
+        config,_=SiteSettings.objects.get_or_create(pk=1)
+        updates=[]
+        if not config.telephone: config.telephone='85293339580';updates.append('telephone')
+        if not config.whatsapp: config.whatsapp='85293339580';updates.append('whatsapp')
+        if updates: config.save(update_fields=updates+['updated_at'])
         for slug,name in PAGE_NAMES.items():
             snapshot=initial(slug)
             page,_=Page.objects.get_or_create(slug=slug,defaults={'name':name,'draft':snapshot,'published':copy.deepcopy(snapshot)})
