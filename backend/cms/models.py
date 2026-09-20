@@ -23,6 +23,8 @@ class MediaAsset(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     title=models.CharField('圖片名稱',max_length=120)
     alt=models.CharField('預設替代文字',max_length=300,blank=True)
+    caption=models.CharField('圖片說明',max_length=300,blank=True)
+    tags=models.CharField('標籤',max_length=300,blank=True,help_text='以逗號分隔，例如：通渠前,高壓水力,商業工程')
     file=models.FileField(upload_to='images/')
     width=models.PositiveIntegerField()
     height=models.PositiveIntegerField()

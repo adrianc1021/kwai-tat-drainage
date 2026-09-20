@@ -24,7 +24,7 @@ from .models import (SiteSettings, Page, MediaAsset, Revision, Audit, Event, Inq
     Campaign, Integration, Notification)
 from .forms import (SetupForm, SettingsForm, UploadForm, InquiryForm, BlogPostForm,
     BlogCategoryForm, SeoMetadataForm, ServiceForm, ServiceAreaForm, CaseStudyForm,
-    ReviewForm, CampaignForm, IntegrationForm, NotificationForm)
+    ReviewForm, CampaignForm, IntegrationForm, NotificationForm, MediaAssetForm)
 from . import content
 
 def guard(permission):
@@ -182,6 +182,15 @@ def delete_media(request,pk):
     else:
         asset.file.delete(save=False);asset.delete();audit(request,'刪除未使用圖片',str(pk));messages.success(request,'圖片已刪除。')
     return redirect('media')
+
+@guard('change_mediaasset')
+@require_http_methods(['GET','POST'])
+def edit_media(request,pk):
+    asset=get_object_or_404(MediaAsset,pk=pk)
+    form=MediaAssetForm(request.POST or None,instance=asset)
+    if request.method=='POST' and form.is_valid():
+        form.save();audit(request,'更新圖片資料',str(pk));messages.success(request,'圖片資料已更新。');return redirect('media')
+    return render(request,'portal/media_edit.html',{'active':'media','asset':asset,'form':form})
 
 @guard('change_sitesettings')
 @require_http_methods(['GET','POST'])

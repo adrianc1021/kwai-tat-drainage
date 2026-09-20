@@ -37,6 +37,8 @@ class CMSFlowTests(TestCase):
     def test_image_validation_and_private_drafts(self):
         self.assertEqual(self.upload().status_code,302)
         a=MediaAsset.objects.get();self.assertEqual(a.width,120)
+        self.assertEqual(self.client.post(f'/manage/media/{a.pk}/edit/',{'title':'更新圖片','alt':'更新替代文字','caption':'工程說明','tags':'通渠前,住宅'}).status_code,302)
+        a.refresh_from_db();self.assertEqual(a.caption,'工程說明');self.assertEqual(a.tags,'通渠前,住宅')
         self.assertEqual(Client().get(f'/media/{a.pk}.webp').status_code,404)
         self.assertEqual(self.client.get(f'/media/{a.pk}.webp').status_code,200)
         self.assertEqual(Image.open(a.file).format,'WEBP')

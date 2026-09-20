@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import get_user_model
-from .models import SiteSettings, Inquiry, BlogPost, BlogCategory, BlogTag, SeoMetadata, Service, ServiceArea, CaseStudy, Review, Campaign, Integration, Notification
+from .models import SiteSettings, Inquiry, MediaAsset, BlogPost, BlogCategory, BlogTag, SeoMetadata, Service, ServiceArea, CaseStudy, Review, Campaign, Integration, Notification
 class SetupForm(UserCreationForm):
     class Meta:
         model=get_user_model()
@@ -26,6 +26,12 @@ class UploadForm(forms.Form):
         if value.image.format not in ['JPEG','PNG','WEBP']:raise forms.ValidationError('只支援 JPG、PNG 或 WebP，不接受 SVG、GIF 或可執行檔。')
         if value.image.width*value.image.height>25000000:raise forms.ValidationError('圖片不可超過 2,500 萬像素。')
         return value
+
+class MediaAssetForm(forms.ModelForm):
+    class Meta:
+        model=MediaAsset
+        fields=['title','alt','caption','tags']
+        widgets={'caption':forms.Textarea(attrs={'rows':2})}
 class InquiryForm(forms.ModelForm):
     class Meta:
         model=Inquiry
