@@ -3,6 +3,7 @@ from datetime import timedelta
 from functools import wraps
 from pathlib import Path
 from PIL import Image, ImageOps
+from bs4 import BeautifulSoup
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout, get_user_model
@@ -11,15 +12,19 @@ from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, F
 from django.db.models.functions import TruncDate
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden, Http404, FileResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
-from .models import SiteSettings, Page, MediaAsset, Revision, Audit, Event, Inquiry, Throttle
-from .forms import SetupForm, SettingsForm, UploadForm, InquiryForm
+from .models import (SiteSettings, Page, MediaAsset, Revision, Audit, Event, Inquiry, Throttle,
+    BlogPost, BlogCategory, BlogTag, SeoMetadata, Service, ServiceArea, CaseStudy, Review,
+    Campaign, Integration, Notification)
+from .forms import (SetupForm, SettingsForm, UploadForm, InquiryForm, BlogPostForm,
+    BlogCategoryForm, SeoMetadataForm, ServiceForm, ServiceAreaForm, CaseStudyForm,
+    ReviewForm, CampaignForm, IntegrationForm, NotificationForm)
 from . import content
 
 def guard(permission):
@@ -92,7 +97,7 @@ def stats(days):
 def dashboard(request):
     days=int(request.GET.get('days','7')) if request.GET.get('days','7') in ('7','30','90') else 7
     data=stats(days)
-    data.update({'active':'dashboard','config':SiteSettings.objects.get(pk=1),'environment':'正式環境' if settings.PRODUCTION else '本機測試','asset_count':MediaAsset.objects.count(),'page_count':Page.objects.count(),'inquiry_count':Inquiry.objects.count() if request.user.has_perm('cms.view_inquiry') else None,'activity':Audit.objects.order_by('-id')[:5] if request.user.has_perm('cms.view_audit') else []})
+    data.update({'active':'dashboard','config':SiteSettings.objects.get(pk=1),'environment':'正式環境' if settings.PRODUCTION else '本機測試','now':timezone.localtime(),'asset_count':MediaAsset.objects.count(),'page_count':Page.objects.count(),'inquiry_count':Inquiry.objects.count() if request.user.has_perm('cms.view_inquiry') else None,'activity':Audit.objects.order_by('-id')[:5] if request.user.has_perm('cms.view_audit') else [],'integrations':Integration.objects.order_by('provider'),'post_count':BlogPost.objects.filter(deleted_at__isnull=True).count(),'service_count':Service.objects.filter(deleted_at__isnull=True).count()})
     return render(request,'portal/dashboard.html',data)
 
 @guard('view_event')
@@ -219,7 +224,26 @@ def public_page(request,slug='index'):
     preview=request.GET.get('preview')=='draft'
     if preview and (not request.user.is_staff or not request.user.has_perm('cms.view_page')):return HttpResponseForbidden()
     config=SiteSettings.objects.get(pk=1)
-    response=HttpResponse(content.render(slug,page.draft if preview else page.published,config.analytics_enabled and not request.user.is_staff and not preview))
+    html=content.render(slug,page.draft if preview else page.published,config.analytics_enabled and not request.user.is_staff and not preview)
+    seo=getattr(page,'seo',None)
+    if seo and not preview:
+        soup=BeautifulSoup(html,'html.parser')
+        if seo.title and soup.title: soup.title.string=seo.title
+        description=soup.select_one('meta[name="description"]')
+        if seo.description and description: description['content']=seo.description
+        robots=soup.select_one('meta[name="robots"]')
+        if robots: robots['content']=('index' if seo.index else 'noindex')+', '+('follow' if seo.follow else 'nofollow')
+        if seo.canonical:
+            link=soup.select_one('link[rel="canonical"]')
+            if not link: link=soup.new_tag('link',rel='canonical');soup.head.append(link)
+            link['href']=seo.canonical
+        for prop,value in [('og:title',seo.og_title),('og:description',seo.og_description)]:
+            if value:
+                tag=soup.select_one(f'meta[property="{prop}"]')
+                if not tag: tag=soup.new_tag('meta',attrs={'property':prop});soup.head.append(tag)
+                tag['content']=value
+        html=str(soup)
+    response=HttpResponse(html)
     response['Cache-Control']='no-store'
     return response
 
@@ -315,3 +339,134 @@ def workspace(request):
     for permission, destination in [('view_event','dashboard'),('view_page','pages'),('view_mediaasset','media'),('view_inquiry','inquiries'),('change_sitesettings','settings')]:
         if request.user.is_staff and request.user.has_perm('cms.'+permission):return redirect(destination)
     return HttpResponseForbidden('此帳戶尚未分配工作權限，請聯絡管理員。')
+
+
+MANAGERS={
+    'blog': {'label':'Blog 文章','model':BlogPost,'form':BlogPostForm,'permission':'blogpost','active':'blog','title_field':'title'},
+    'services': {'label':'服務頁','model':Service,'form':ServiceForm,'permission':'service','active':'services','title_field':'name'},
+    'areas': {'label':'服務地區','model':ServiceArea,'form':ServiceAreaForm,'permission':'servicearea','active':'areas','title_field':'name'},
+    'cases': {'label':'工程個案','model':CaseStudy,'form':CaseStudyForm,'permission':'casestudy','active':'cases','title_field':'title'},
+    'reviews': {'label':'評價管理','model':Review,'form':ReviewForm,'permission':'review','active':'reviews','title_field':'display_name'},
+    'campaigns': {'label':'宣傳活動','model':Campaign,'form':CampaignForm,'permission':'campaign','active':'campaigns','title_field':'name'},
+}
+
+def _can(request, action, model_name):
+    return request.user.is_staff and request.user.has_perm(f'cms.{action}_{model_name}')
+
+@login_required
+def manager_list(request, kind):
+    cfg=MANAGERS.get(kind)
+    if not cfg or not _can(request,'view',cfg['permission']): return HttpResponseForbidden('你的帳戶沒有這項權限。')
+    model=cfg['model']; rows=model.objects.all()
+    if hasattr(model,'deleted_at'): rows=rows.filter(deleted_at__isnull=True)
+    q=request.GET.get('q','').strip()[:120]
+    if q:
+        field=cfg['title_field']; rows=rows.filter(**{f'{field}__icontains':q})
+    return render(request,'portal/manager_list.html',{'active':cfg['active'],'kind':kind,'label':cfg['label'],'rows':rows,'config':cfg,'q':q})
+
+@login_required
+@require_http_methods(['GET','POST'])
+def manager_edit(request, kind, pk=None):
+    cfg=MANAGERS.get(kind)
+    if not cfg: raise Http404
+    action='change' if pk else 'add'
+    if not _can(request,action,cfg['permission']): return HttpResponseForbidden('你的帳戶沒有這項權限。')
+    model=cfg['model']; instance=get_object_or_404(model,pk=pk) if pk else None
+    if request.method=='POST':
+        form=cfg['form'](request.POST,request.FILES,instance=instance)
+        if form.is_valid():
+            if kind == 'blog' and form.cleaned_data.get('status') == 'published' and not request.user.has_perm('cms.publish_blogpost'):
+                form.add_error('status','只有獲授權發布角色可以發布文章。')
+            if kind in ('services','areas','cases') and form.cleaned_data.get('status') == 'published' and not request.user.has_perm('cms.publish_page'):
+                form.add_error('status','只有獲授權發布角色可以發布公開內容。')
+            if form.errors:
+                return render(request,'portal/manager_form.html',{'active':cfg['active'],'kind':kind,'label':cfg['label'],'form':form,'instance':instance,'config':cfg})
+            row=form.save()
+            if kind == 'blog' and row.status == 'published' and not row.published_at:
+                row.published_at=timezone.now();row.save(update_fields=['published_at'])
+            audit(request,('更新' if instance else '建立')+cfg['label'],str(row.pk))
+            messages.success(request,f'{cfg["label"]}已儲存。')
+            return redirect('manager-list',kind=kind)
+    else: form=cfg['form'](instance=instance)
+    return render(request,'portal/manager_form.html',{'active':cfg['active'],'kind':kind,'label':cfg['label'],'form':form,'instance':instance,'config':cfg})
+
+@login_required
+@require_POST
+def manager_delete(request,kind,pk):
+    cfg=MANAGERS.get(kind)
+    if not cfg or not _can(request,'delete',cfg['permission']): return HttpResponseForbidden('你的帳戶沒有這項權限。')
+    row=get_object_or_404(cfg['model'],pk=pk)
+    if hasattr(row,'deleted_at'):
+        row.deleted_at=timezone.now();row.save(update_fields=['deleted_at','updated_at'])
+    else: row.delete()
+    audit(request,'封存'+cfg['label'],str(pk));messages.success(request,cfg['label']+'已封存。')
+    return redirect('manager-list',kind=kind)
+
+@login_required
+def seo_manager(request):
+    if not _can(request,'view','seo_metadata'): return HttpResponseForbidden('你的帳戶沒有這項權限。')
+    pages=Page.objects.order_by('name');posts=BlogPost.objects.filter(deleted_at__isnull=True).order_by('-updated_at')
+    return render(request,'portal/seo.html',{'active':'seo','pages':pages,'posts':posts})
+
+@login_required
+@require_http_methods(['GET','POST'])
+def seo_edit(request,target,pk):
+    if not _can(request,'change','seo_metadata'): return HttpResponseForbidden('你的帳戶沒有這項權限。')
+    relation={'page':('page',Page),'post':('post',BlogPost)}.get(target)
+    if not relation: raise Http404
+    key,model=relation; obj=get_object_or_404(model,pk=pk)
+    seo,created=SeoMetadata.objects.get_or_create(**{key:obj})
+    if request.method=='POST':
+        form=SeoMetadataForm(request.POST,request.FILES,instance=seo)
+        if form.is_valid(): form.save();audit(request,'更新 SEO 設定',f'{target}:{pk}');messages.success(request,'SEO 設定已儲存。');return redirect('seo')
+    else: form=SeoMetadataForm(instance=seo)
+    return render(request,'portal/seo_form.html',{'active':'seo','form':form,'target':target,'obj':obj})
+
+@login_required
+@require_http_methods(['GET','POST'])
+def integrations(request):
+    if not _can(request,'view','integration'): return HttpResponseForbidden('你的帳戶沒有這項權限。')
+    for provider,label in Integration.PROVIDERS:
+        Integration.objects.get_or_create(provider=provider)
+    if request.method=='POST':
+        row=get_object_or_404(Integration,pk=request.POST.get('pk'))
+        if not _can(request,'change','integration'): return HttpResponseForbidden('你的帳戶沒有這項權限。')
+        form=IntegrationForm(request.POST,instance=row)
+        if form.is_valid(): form.save();audit(request,'更新整合設定',row.provider);messages.success(request,'整合設定已儲存；未設定憑證前不會顯示外部數據。');return redirect('integrations')
+    return render(request,'portal/integrations.html',{'active':'integrations','rows':Integration.objects.order_by('provider')})
+
+@login_required
+def users(request):
+    if not request.user.is_superuser: return HttpResponseForbidden('只有擁有者可以管理使用者。')
+    return render(request,'portal/users.html',{'active':'users','users':get_user_model().objects.filter(is_staff=True).order_by('username')})
+
+@login_required
+@require_http_methods(['GET','POST'])
+def notifications(request):
+    if not _can(request,'view','notification'): return HttpResponseForbidden('你的帳戶沒有這項權限。')
+    form=NotificationForm(request.POST or None)
+    if request.method=='POST' and _can(request,'add','notification') and form.is_valid():
+        row=form.save();audit(request,'建立通知 Banner',str(row.pk));messages.success(request,'通知 Banner 已儲存。');return redirect('notifications')
+    return render(request,'portal/notifications.html',{'active':'notifications','rows':Notification.objects.order_by('-created_at'),'form':form})
+
+def public_blog(request,slug=None):
+    if slug:
+        post=get_object_or_404(BlogPost,slug=slug,status='published',deleted_at__isnull=True)
+        BlogPost.objects.filter(pk=post.pk).update(views=F('views')+1);post.refresh_from_db()
+        return render(request,'portal/public_blog.html',{'post':post})
+    posts=BlogPost.objects.filter(status='published',deleted_at__isnull=True).order_by('-published_at','-updated_at')
+    return render(request,'portal/public_blog_list.html',{'posts':posts})
+
+@require_GET
+def sitemap(request):
+    from xml.sax.saxutils import escape
+    base=request.build_absolute_uri('/').rstrip('/')
+    urls=[base+'/' if p.slug=='index' else base+'/'+p.slug+'.html' for p in Page.objects.all()]
+    urls += [base+'/blog/'+p.slug+'/' for p in BlogPost.objects.filter(status='published',deleted_at__isnull=True)]
+    body=''.join(f'<url><loc>{escape(url)}</loc></url>' for url in urls)
+    return HttpResponse('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',content_type='application/xml')
+
+@require_GET
+def robots(request):
+    base=request.build_absolute_uri('/').rstrip('/')
+    return HttpResponse('User-agent: *\nDisallow: /manage/\nDisallow: /admin/\nSitemap: '+base+'/sitemap.xml\n',content_type='text/plain')

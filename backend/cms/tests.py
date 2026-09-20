@@ -1,4 +1,5 @@
 import copy, io, json, tempfile
+from datetime import timedelta
 from pathlib import Path
 from PIL import Image
 from django.test import TestCase, Client, override_settings
@@ -6,7 +7,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from .models import Page, SiteSettings, MediaAsset, Event, Revision, Audit, Inquiry
+from django.utils import timezone
+from .models import Page, SiteSettings, MediaAsset, Event, Revision, Audit, Inquiry, BlogPost, SeoMetadata, Service, Integration
 from .views import stats
 
 class CMSFlowTests(TestCase):
@@ -66,6 +68,8 @@ class CMSFlowTests(TestCase):
         c=Client();c.force_login(u)
         self.assertEqual(c.post('/manage/pages/index/',{'action':'publish','version':1}).status_code,403)
         self.assertEqual(c.get('/manage/inquiries/').status_code,403)
+        c.post('/manage/blog/new/', {'title':'未授權發布','slug':'blocked-publish','content':'內容','status':'published'})
+        self.assertFalse(BlogPost.objects.filter(slug='blocked-publish').exists())
     def test_contact_configuration_validated_and_rendered(self):
         self.client.post('/manage/settings/',{'telephone':'javascript:alert(1)','whatsapp':''})
         self.assertEqual(SiteSettings.objects.get().telephone,'')
@@ -104,6 +108,43 @@ class CMSFlowTests(TestCase):
         c.logout();c.post('/api/consent/',json.dumps({'choice':'no'}),content_type='application/json');send(data);self.assertEqual(Event.objects.count(),4)
     def test_bootstrap_closed_when_user_exists(self):
         self.assertEqual(Client().get('/manage/setup/').status_code,302)
+
+    def test_blog_draft_is_private_and_published_is_readable(self):
+        category = __import__('cms.models', fromlist=['BlogCategory']).BlogCategory.objects.create(name='通渠知識', slug='drainage')
+        response=self.client.post('/manage/blog/new/', {'title':'廁所去水變慢時先做甚麼','slug':'slow-drain','excerpt':'先確認問題位置，再聯絡客服。','content':'第一段實用內容。','category':category.pk,'status':'draft'})
+        self.assertEqual(response.status_code,302)
+        self.assertEqual(Client().get('/blog/slow-drain/').status_code,404)
+        post=BlogPost.objects.get(slug='slow-drain');post.status='published';post.save()
+        self.assertContains(Client().get('/blog/slow-drain/'),'廁所去水變慢時先做甚麼')
+
+    def test_scheduled_blog_command_publishes_due_posts(self):
+        post=BlogPost.objects.create(title='排水小知識',slug='drainage-tip',status='scheduled',scheduled_at=timezone.now()-timedelta(minutes=2))
+        call_command('publish_scheduled')
+        post.refresh_from_db();self.assertEqual(post.status,'published');self.assertIsNotNone(post.published_at)
+
+    def test_seo_metadata_persists_for_page(self):
+        page=Page.objects.get(slug='index')
+        response=self.client.post(f'/manage/seo/page/{page.pk}/', {'title':'快達通渠首頁','description':'香港通渠及排水問題查詢。','canonical':'','index':'','follow':'on','og_title':'首頁','og_description':'','og_image':'','primary_keywords':'通渠','secondary_keywords':'','breadcrumb_title':'首頁','schema_type':'WebPage'})
+        self.assertEqual(response.status_code,302)
+        self.assertEqual(SeoMetadata.objects.get(page=page).title,'快達通渠首頁')
+        self.assertContains(Client().get('/'),'<title>快達通渠首頁</title>',html=False)
+
+    def test_services_and_integration_are_real_records(self):
+        response=self.client.post('/manage/services/new/', {'name':'住宅通渠','slug':'residential-drainage','summary':'處理住宅渠道淤塞查詢。','content':'先了解位置和現場情況。','emergency':'on','price_note':'需按現場確認','status':'draft'})
+        self.assertEqual(response.status_code,302);self.assertTrue(Service.objects.filter(slug='residential-drainage').exists())
+        row=Integration.objects.get(provider='ga4')
+        response=self.client.post('/manage/integrations/', {'pk':row.pk,'property_id':'G-TEST','enabled':'on'})
+        self.assertEqual(response.status_code,302);row.refresh_from_db();self.assertTrue(row.enabled);self.assertEqual(row.property_id,'G-TEST')
+
+    def test_new_management_modules_render(self):
+        for path in ['/manage/blog/','/manage/services/','/manage/areas/','/manage/cases/','/manage/reviews/','/manage/campaigns/','/manage/seo/','/manage/integrations/','/manage/notifications/','/manage/users/']:
+            with self.subTest(path=path): self.assertEqual(self.client.get(path).status_code,200)
+        for path in ['/manage/blog/new/','/manage/services/new/','/manage/areas/new/','/manage/cases/new/','/manage/reviews/new/','/manage/campaigns/new/']:
+            with self.subTest(path=path): self.assertEqual(self.client.get(path).status_code,200)
+
+    def test_dynamic_seo_routes_exist(self):
+        self.assertEqual(Client().get('/sitemap.xml').status_code,200)
+        self.assertEqual(Client().get('/robots.txt').status_code,200)
     def test_project_files_not_served(self):
         for path in ['/private/cms.sqlite3','/site-src/build.py','/requirements.txt','/secret.key','/../README.md']:
             self.assertEqual(Client().get(path).status_code,404)

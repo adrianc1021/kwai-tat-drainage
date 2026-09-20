@@ -1,14 +1,24 @@
 <!doctype html><html lang="zh-Hant-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{% block title %}網站管理{% endblock %} · 快達通渠</title><link rel="stylesheet" href="/assets/portal/admin.css"><script src="/assets/portal/admin.js" defer></script></head><body>
 <a class="skip" href="#main">跳至主要內容</a>
-<div class="shell"><aside class="sidebar"><a class="brand" href="/manage/workspace/"><span class="brand-icon">快</span><span>快達通渠<small>網站管理工作室</small></span></a><p class="nav-label">工作空間</p><nav aria-label="後台功能">
-{% if perms.cms.view_event %}<a href="/manage/" {% if active == 'dashboard' %}aria-current="page"{% endif %}><span aria-hidden="true">◴</span>數據總覽</a>{% endif %}
-{% if perms.cms.view_page %}<a href="/manage/pages/" {% if active == 'pages' %}aria-current="page"{% endif %}><span aria-hidden="true">▤</span>頁面與內容</a>{% endif %}
-{% if perms.cms.view_mediaasset %}<a href="/manage/media/" {% if active == 'media' %}aria-current="page"{% endif %}><span aria-hidden="true">▧</span>圖片素材庫</a>{% endif %}
-{% if perms.cms.view_inquiry %}<a href="/manage/inquiries/" {% if active == 'inquiries' %}aria-current="page"{% endif %}><span aria-hidden="true">☷</span>查詢管理</a>{% endif %}
-{% if perms.cms.view_audit %}<a href="/manage/history/" {% if active == 'history' %}aria-current="page"{% endif %}><span aria-hidden="true">↶</span>修改紀錄</a>{% endif %}
-{% if perms.cms.change_sitesettings %}<a href="/manage/settings/" {% if active == 'settings' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙</span>網站設定</a>{% endif %}
-{% if request.user.is_superuser %}<a href="/admin/auth/user/"><span aria-hidden="true">♧</span>帳戶與權限</a>{% endif %}</nav>
-<div class="sidebar-bottom"><a class="view-site" href="/" target="_blank" rel="noopener">查看網站 <span aria-hidden="true">↗</span></a><div class="account"><span class="avatar">{{ request.user.username|first|upper }}</span><div>{{ request.user.username }}<small>已登入管理帳戶</small></div></div><form method="post" action="/manage/logout/">{% csrf_token %}<button class="quiet" type="submit">登出帳戶</button></form></div></aside>
-<div class="workspace"><header class="topbar"><span>快達通渠 <span class="muted">／ 管理中心</span></span><div class="topbar-actions"><span class="status-dot"></span>本機管理版<a href="/manage/settings/" aria-label="網站設定">⚙</a></div></header><main id="main" tabindex="-1">
+<div class="shell">
+<aside class="sidebar" id="site-nav"><div class="sidebar-head"><a class="brand" href="/manage/workspace/"><span class="brand-icon">快</span><span>快達通渠<small>網站管理後台</small></span></a><button class="drawer-close" type="button" data-nav-close aria-label="關閉導覽">×</button></div><p class="nav-label">工作空間</p><nav aria-label="後台功能">
+{% if perms.cms.view_event %}<a href="/manage/" {% if active == 'dashboard' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⌂</span>總覽</a>{% endif %}
+{% if perms.cms.view_page %}<a href="/manage/pages/" {% if active == 'pages' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">▤</span>網頁內容</a>{% endif %}
+{% if perms.cms.view_mediaasset %}<a href="/manage/media/" {% if active == 'media' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">▧</span>圖片庫</a>{% endif %}
+{% if perms.cms.view_blogpost %}<a href="/manage/blog/" {% if active == 'blog' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">✎</span>Blog 文章</a>{% endif %}
+{% if perms.cms.view_seometadata %}<a href="/manage/seo/" {% if active == 'seo' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⌕</span>SEO 管理</a>{% endif %}
+{% if perms.cms.view_event %}<a href="/manage/integrations/" {% if active == 'integrations' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◔</span>流量分析</a>{% endif %}
+{% if perms.cms.view_inquiry %}<a href="/manage/inquiries/" {% if active == 'inquiries' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">☷</span>客戶查詢</a>{% endif %}
+{% if perms.cms.view_service %}<a href="/manage/services/" {% if active == 'services' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◈</span>服務頁</a>{% endif %}
+{% if perms.cms.view_servicearea %}<a href="/manage/areas/" {% if active == 'areas' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⌖</span>服務地區</a>{% endif %}
+{% if perms.cms.view_casestudy %}<a href="/manage/cases/" {% if active == 'cases' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">▣</span>工程個案</a>{% endif %}
+{% if perms.cms.view_review %}<a href="/manage/reviews/" {% if active == 'reviews' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">☆</span>評價管理</a>{% endif %}
+{% if perms.cms.view_campaign %}<a href="/manage/campaigns/" {% if active == 'campaigns' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">↗</span>宣傳活動</a>{% endif %}
+{% if perms.cms.view_notification %}<a href="/manage/notifications/" {% if active == 'notifications' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">!</span>網站通知</a>{% endif %}
+{% if perms.cms.view_audit %}<a href="/manage/history/" {% if active == 'history' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">↶</span>操作紀錄</a>{% endif %}
+{% if perms.cms.change_sitesettings %}<a href="/manage/settings/" {% if active == 'settings' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⚙</span>系統設定</a>{% endif %}
+{% if request.user.is_superuser %}<a href="/manage/users/" {% if active == 'users' %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">♧</span>使用者及權限</a>{% endif %}</nav>
+<div class="sidebar-bottom"><a class="view-site" href="/" target="_blank" rel="noopener">查看公開網站 <span aria-hidden="true">↗</span></a><div class="account"><span class="avatar">{{ request.user.username|first|upper }}</span><div>{{ request.user.username }}<small>已登入管理帳戶</small></div></div><form method="post" action="/manage/logout/">{% csrf_token %}<button class="quiet" type="submit">登出帳戶</button></form></div></aside>
+<div class="drawer-backdrop" data-nav-close></div><div class="workspace"><header class="topbar"><button class="menu-toggle" type="button" data-nav-open aria-label="開啟後台導覽">☰</button><span>快達通渠 <span class="muted">／ 管理中心</span></span><div class="topbar-actions"><span class="status-dot"></span>{% if request.user.is_superuser %}擁有者{% else %}管理帳戶{% endif %}<a href="/manage/settings/" aria-label="系統設定">⚙</a></div></header><main id="main" tabindex="-1">
 {% if messages %}<div class="messages" role="status">{% for message in messages %}<p class="message {{ message.tags }}">{{ message }}</p>{% endfor %}</div>{% endif %}
-{% block content %}{% endblock %}</main><footer>快達通渠管理中心 <span>修改及數據保存於本機資料庫</span></footer></div></div></body></html>
+{% block content %}{% endblock %}</main><footer>快達通渠管理中心 <span>資料保存於受保護的 CMS 資料庫</span></footer></div></div></body></html>

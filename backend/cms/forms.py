@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import get_user_model
-from .models import SiteSettings, Inquiry
+from .models import SiteSettings, Inquiry, BlogPost, BlogCategory, BlogTag, SeoMetadata, Service, ServiceArea, CaseStudy, Review, Campaign, Integration, Notification
 class SetupForm(UserCreationForm):
     class Meta:
         model=get_user_model()
@@ -31,3 +31,57 @@ class InquiryForm(forms.ModelForm):
         model=Inquiry
         fields=['name','phone','channel','message','status']
         widgets={'message':forms.Textarea(attrs={'rows':5})}
+
+class BlogPostForm(forms.ModelForm):
+    class Meta:
+        model=BlogPost
+        fields=['title','slug','excerpt','content','cover','category','tags','status','scheduled_at']
+        widgets={'content':forms.Textarea(attrs={'rows':16,'class':'rich-editor','placeholder':'以清楚段落撰寫文章內容；發布前請核實服務資料。'}),'scheduled_at':forms.DateTimeInput(attrs={'type':'datetime-local'})}
+    def clean_slug(self):
+        value=self.cleaned_data['slug'].strip().lower()
+        if not value: raise forms.ValidationError('請填寫 URL slug。')
+        return value
+
+class BlogCategoryForm(forms.ModelForm):
+    class Meta:
+        model=BlogCategory; fields=['name','slug','description']
+
+class SeoMetadataForm(forms.ModelForm):
+    class Meta:
+        model=SeoMetadata
+        fields=['title','description','canonical','index','follow','og_title','og_description','og_image','primary_keywords','secondary_keywords','breadcrumb_title','schema_type']
+        widgets={'description':forms.Textarea(attrs={'rows':3}),'og_description':forms.Textarea(attrs={'rows':3})}
+
+class ServiceForm(forms.ModelForm):
+    class Meta:
+        model=Service; fields=['name','slug','summary','content','cover','emergency','price_note','status']
+        widgets={'content':forms.Textarea(attrs={'rows':8})}
+
+class ServiceAreaForm(forms.ModelForm):
+    class Meta:
+        model=ServiceArea; fields=['name','slug','region','content','service_hours','status']
+        widgets={'content':forms.Textarea(attrs={'rows':8})}
+
+class CaseStudyForm(forms.ModelForm):
+    class Meta:
+        model=CaseStudy; fields=['title','slug','date','area','service','problem','method','duration','before','after','consent','anonymized','testimonial','status']
+        widgets={'date':forms.DateInput(attrs={'type':'date'}),'problem':forms.Textarea(attrs={'rows':4}),'method':forms.Textarea(attrs={'rows':4}),'testimonial':forms.Textarea(attrs={'rows':3})}
+
+class ReviewForm(forms.ModelForm):
+    class Meta:
+        model=Review; fields=['display_name','source','body','review_date','consent','status']
+        widgets={'review_date':forms.DateInput(attrs={'type':'date'}),'body':forms.Textarea(attrs={'rows':5})}
+
+class CampaignForm(forms.ModelForm):
+    class Meta:
+        model=Campaign; fields=['name','landing_page','banner','offer','cta','utm_campaign','starts_at','ends_at','budget','notes','status']
+        widgets={'offer':forms.Textarea(attrs={'rows':4}),'notes':forms.Textarea(attrs={'rows':3}),'starts_at':forms.DateTimeInput(attrs={'type':'datetime-local'}),'ends_at':forms.DateTimeInput(attrs={'type':'datetime-local'})}
+
+class IntegrationForm(forms.ModelForm):
+    class Meta:
+        model=Integration; fields=['enabled','property_id']
+
+class NotificationForm(forms.ModelForm):
+    class Meta:
+        model=Notification; fields=['title','body','level','starts_at','ends_at','enabled']
+        widgets={'body':forms.Textarea(attrs={'rows':3}),'starts_at':forms.DateTimeInput(attrs={'type':'datetime-local'}),'ends_at':forms.DateTimeInput(attrs={'type':'datetime-local'})}

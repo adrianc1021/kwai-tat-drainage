@@ -13,3 +13,7 @@ for (const form of document.querySelectorAll('[data-dirty-form]')) {
 window.addEventListener('beforeunload', event => {
   if (dirty) {event.preventDefault();event.returnValue = '';}
 });
+const shell = document.querySelector('.shell');
+for (const trigger of document.querySelectorAll('[data-nav-open]')) trigger.addEventListener('click', () => shell?.classList.add('nav-open'));
+for (const trigger of document.querySelectorAll('[data-nav-close]')) trigger.addEventListener('click', () => shell?.classList.remove('nav-open'));
+for (const link of document.querySelectorAll('.sidebar nav a')) link.addEventListener('click', () => shell?.classList.remove('nav-open'));

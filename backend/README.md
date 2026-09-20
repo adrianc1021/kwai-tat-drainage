@@ -8,7 +8,11 @@
 - 套用前版本保存及還原；
 - 手動查詢紀錄及跟進狀態；
 - 管理員、內容編輯、數據分析及營運權限；
-- 修改紀錄、CSV 彙總匯出及本機私人備份。
+- 修改紀錄、CSV 彙總匯出及本機私人備份；
+- Blog 文章草稿／排程／發布、分類及封面圖片；
+- SEO metadata、canonical、索引設定、Open Graph 預覽及動態 sitemap／robots；
+- 服務頁、服務地區、工程個案、評價、宣傳活動及通知 Banner；
+- GA4、Search Console、PageSpeed 及 Google Business Profile 的連接狀態頁（沒有憑證時保持空白狀態，不生成假數據）。
 
 ## 本機啟動
 
@@ -30,6 +34,8 @@
 - `CMS_ADMIN_USERNAME`：首次管理員帳戶名稱；
 - `CMS_ADMIN_PASSWORD`：至少 12 個字元的首次管理員密碼。
 
+如要使用正式分析整合，請把 OAuth client id、client secret 及 refresh token 只放在 server environment variables。後台只保存 property ID、連接開關、同步時間及錯誤摘要，不會把 secret 或 token 傳到瀏覽器。
+
 啟動命令只會在資料庫沒有帳戶時建立一次管理員；之後移除這兩個環境變數亦不會刪除帳戶。後台入口為 `/manage/`，圖片入口為 `/manage/media/`。Render 持久化磁碟的 `CMS_DATA_DIR` 必須保留，否則資料庫、上載圖片及草稿會隨部署消失。
 
 正式環境仍需使用 HTTPS、外部存取控制、備份監察及正式網域設定：
@@ -50,6 +56,20 @@ CMS_PRODUCTION=1 CMS_ALLOWED_HOSTS=example.com CMS_DATA_DIR=/private/path \
 5. 套用前版本保留在資料庫，可還原為新草稿。
 
 頁面文字只接受純文字，不允許貼入 HTML 或 JavaScript。仍被草稿、現行頁面或歷史版本引用的圖片不能刪除。
+
+## Blog、SEO 及公開內容
+
+在「Blog 文章」新增草稿，加入摘要、純文字內容、封面、分類及標籤；只有「已發布」文章會由 `/blog/` 公開讀取。狀態為「已排程」的文章由受控工作排程執行：
+
+```sh
+.venv/bin/python backend/manage.py publish_scheduled
+```
+
+正式環境可用 Render Cron、系統 cron 或其他受控工作流程每分鐘／每五分鐘執行一次。文章內容使用純文字輸入並由 Django 自動轉義，避免未經消毒的 HTML 或 script 注入。
+
+「SEO 管理」可為頁面及 Blog 儲存 title、description、canonical、index/follow、Open Graph、關鍵字、breadcrumb 及 schema type。公開頁面會從已保存的 metadata 輸出 `<title>`、description、robots、canonical 及 Open Graph；`/sitemap.xml` 只列公開頁面和已發布文章。尚未連接 Search Console 時，介面會明確顯示「尚未連接」，不會顯示示範曝光或排名。
+
+「服務頁」「服務地區」「工程個案」「評價」及「宣傳活動」都是獨立資料，支援草稿和封存。工程個案沒有公開同意或未完成去識別時應保持草稿；評價需有人手核准，系統不會自動生成評價。
 
 ## 統計定義與私隱
 
@@ -79,6 +99,10 @@ CMS_PRODUCTION=1 CMS_ALLOWED_HOSTS=example.com CMS_DATA_DIR=/private/path \
 
 重新執行 `init_cms` 不會覆蓋已存在的頁面內容。靜態原始頁面改動不會自動改寫後台資料；如要重新匯入，須先設計版本遷移，避免抹走管理員修改。
 
+## 資料表摘要
+
+第一階段 migration `cms.0002` 加入 `BlogPost`、`BlogCategory`、`BlogTag`、`SeoMetadata`、`Redirect`、`Service`、`ServiceArea`、`CaseStudy`、`Review`、`Campaign`、`Integration`、`Notification`、`PageSection`。主要內容都有時間欄位、狀態及封存欄位；Django model permissions 和既有登入 guard 在 server-side 執行，內容編輯不能發布 Blog 或公開服務，除非獲得 `publish_blogpost` 或 `publish_page` 權限。
+
 ## 驗證
 
 ```sh
@@ -86,4 +110,4 @@ CMS_PRODUCTION=1 CMS_ALLOWED_HOSTS=example.com CMS_DATA_DIR=/private/path \
 NODE tests/backend-browser-check.cjs
 ```
 
-瀏覽器流程使用隔離的 `.work/cms-browser-test` 資料庫。測試涵蓋權限、CSRF、圖片驗證、草稿隔離、預覽、套用、還原、分析同意／事件白名單、查詢刪除、21 組後台版面、axe A／AA 及 Chromium／WebKit 手機操作。
+目前核心 Django suite 共 19 項測試，涵蓋權限、CSRF、圖片驗證、草稿隔離、預覽、套用、還原、Blog 草稿及排程發布、SEO 保存、服務及整合保存、公開 sitemap／robots、分析同意／事件白名單及查詢個人資料。瀏覽器流程可再使用隔離資料庫檢查 `/manage/`、`/manage/blog/`、`/manage/seo/` 及 360px Drawer。

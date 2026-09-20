@@ -1,0 +1,6 @@
+{% extends 'portal/base.html' %}
+{% block title %}{% if instance %}編輯{% else %}新增{% endif %}{{ label }}{% endblock %}
+{% block content %}
+<div class="heading"><div><p class="eyebrow">{{ label }}</p><h1>{% if instance %}編輯{{ label }}{% else %}新增{{ label }}{% endif %}</h1><p class="muted">請只填寫已核實資料。發布前請檢查公開內容及圖片授權。</p></div><a class="button light" href="/manage/{{ kind }}/">返回列表</a></div>
+<form method="post" enctype="multipart/form-data" class="editor-form" data-dirty-form><div class="editor-layout"><section class="card form-card">{% csrf_token %}{{ form.as_p }}<button class="button" type="submit">儲存{{ label }}</button></section><aside class="card info-card"><h2>內容提醒</h2><p>草稿只會保存於管理後台。要讓訪客看到，請先在狀態欄選擇「已發布」，並確認相關同意、SEO 及替代文字。</p>{% if kind == 'blog' %}<p>Blog 文章會在公開網站的 Blog 頁面顯示；發布時間可用於排程欄位，正式自動排程需由伺服器工作排程觸發。</p>{% endif %}{% if kind == 'cases' %}<p>沒有客戶公開同意或未移除門牌、人臉及車牌時，請保持草稿。</p>{% endif %}</aside></div></form>
+{% endblock %}
