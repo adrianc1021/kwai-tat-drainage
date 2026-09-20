@@ -3,4 +3,5 @@ node_modules/
 .DS_Store
 production/__pycache__/
 backend/private/
+backend/staticfiles/
 backend/**/__pycache__/

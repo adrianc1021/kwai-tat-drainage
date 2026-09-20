@@ -2,8 +2,8 @@ services:
   - type: web
     name: kwai-tat-drainage-cms
     runtime: python
-    buildCommand: "pip install -r backend/requirements.txt && python3 production/build.py --public && python3 backend/manage.py migrate && python3 backend/manage.py init_cms && python3 backend/manage.py collectstatic --noinput && python3 backend/manage.py bootstrap_admin"
-    startCommand: "gunicorn --chdir backend config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --access-logfile -"
+    buildCommand: "pip install -r backend/requirements.txt && python3 production/build.py --public && CMS_DATA_DIR=/tmp/cms-build CMS_PRODUCTION=1 python3 backend/manage.py collectstatic --noinput"
+    startCommand: "python3 backend/manage.py migrate && python3 backend/manage.py init_cms && python3 backend/manage.py bootstrap_admin && gunicorn --chdir backend config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --access-logfile -"
     healthCheckPath: /
     pullRequestPreviewsEnabled: false
     disk:
