@@ -2,7 +2,9 @@
 
 這個 repository 只包含快達通渠公開網站的建置檔及編譯後首頁，不包含內部文件或管理後台。
 
-Render 使用根目錄的 `render.yaml`，建置流程會執行 `python3 production/build.py --public`，並將 `production/site` 發布為 Static Site。
+Render 使用根目錄的 `render.yaml`，建置流程會執行公開網站建置、Django migration 及靜態檔案收集，並以 Python Web Service 同時提供網站及管理後台。
+
+管理後台版本已加入 Django。要在現有 Render 服務啟用後台，需在 Render 將 Blueprint 同步為 `render.yaml` 的 Python Web Service，並設定 `CMS_ADMIN_USERNAME`、`CMS_ADMIN_PASSWORD` 兩個私密環境變數；部署後後台入口為 `/manage/`，圖片素材庫為 `/manage/media/`。Render 必須保留 `cms-data` 持久化磁碟，否則上載圖片及草稿不會保留。
 
 部署前需要在 Render 設定以下環境變數：
 
