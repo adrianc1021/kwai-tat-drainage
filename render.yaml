@@ -22,7 +22,7 @@ services:
       - key: CMS_PRODUCTION
         value: "1"
       - key: CMS_ALLOWED_HOSTS
-        value: "kwai-tat-drainage.onrender.com"
+        value: "kwai-tat-drainage.onrender.com,kwai-tat-drainage-cms.onrender.com"
       - key: CMS_DATA_DIR
         value: "/var/data"
       - key: CMS_ADMIN_USERNAME
