@@ -20,3 +20,5 @@ urlpatterns=[
  path('sitemap.xml',v.sitemap,name='sitemap'),path('robots.txt',v.robots,name='robots'),
  path('',v.public_page,name='home'),path('<slug:slug>.html',v.public_page),path('<str:name>',v.site_asset)
 ]
+
+handler404='cms.views.custom_404'

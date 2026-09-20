@@ -266,6 +266,17 @@ def public_page(request,slug='index'):
     response['Cache-Control']='no-store'
     return response
 
+def custom_404(request, exception):
+    """Serve the generated, noindex 404 page for unknown public paths."""
+    page = content.site_dir() / '404.html'
+    if page.is_file():
+        response = HttpResponse(page.read_text())
+    else:
+        response = HttpResponse('<!doctype html><html lang="zh-HK"><title>找不到頁面｜快達通渠</title><h1>找不到這個頁面</h1><p><a href="/">返回首頁</a></p></html>')
+    response.status_code = 404
+    response['X-Robots-Tag'] = 'noindex, nofollow'
+    return response
+
 
 @require_GET
 def public_media(request):

@@ -194,6 +194,12 @@ class CMSFlowTests(TestCase):
         private = Client().get('/manage/login/')
         self.assertEqual(private['X-Robots-Tag'], 'noindex, nofollow')
 
+    def test_unknown_public_path_uses_custom_404(self):
+        response = Client().get('/not-a-real-page')
+        self.assertEqual(response.status_code, 404)
+        self.assertIn('找不到這個頁面', response.content.decode())
+        self.assertEqual(response['X-Robots-Tag'], 'noindex, nofollow')
+
     def test_project_files_not_served(self):
         for path in ['/private/cms.sqlite3','/site-src/build.py','/requirements.txt','/secret.key','/../README.md']:
             self.assertEqual(Client().get(path).status_code,404)
