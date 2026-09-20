@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-Hant-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{% block title %}網站管理{% endblock %} · 快達通渠</title><link rel="stylesheet" href="/assets/portal/admin.css"><script src="/assets/portal/admin.js" defer></script></head><body>
+<a class="skip" href="#main">跳至主要內容</a>
+<div class="shell"><aside class="sidebar"><a class="brand" href="/manage/workspace/"><span class="brand-icon">快</span><span>快達通渠<small>網站管理工作室</small></span></a><p class="nav-label">工作空間</p><nav aria-label="後台功能">
+{% if perms.cms.view_event %}<a href="/manage/" {% if active == 'dashboard' %}aria-current="page"{% endif %}><span aria-hidden="true">◴</span>數據總覽</a>{% endif %}
+{% if perms.cms.view_page %}<a href="/manage/pages/" {% if active == 'pages' %}aria-current="page"{% endif %}><span aria-hidden="true">▤</span>頁面與內容</a>{% endif %}
+{% if perms.cms.view_mediaasset %}<a href="/manage/media/" {% if active == 'media' %}aria-current="page"{% endif %}><span aria-hidden="true">▧</span>圖片素材庫</a>{% endif %}
+{% if perms.cms.view_inquiry %}<a href="/manage/inquiries/" {% if active == 'inquiries' %}aria-current="page"{% endif %}><span aria-hidden="true">☷</span>查詢管理</a>{% endif %}
+{% if perms.cms.view_audit %}<a href="/manage/history/" {% if active == 'history' %}aria-current="page"{% endif %}><span aria-hidden="true">↶</span>修改紀錄</a>{% endif %}
+{% if perms.cms.change_sitesettings %}<a href="/manage/settings/" {% if active == 'settings' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙</span>網站設定</a>{% endif %}
+{% if request.user.is_superuser %}<a href="/admin/auth/user/"><span aria-hidden="true">♧</span>帳戶與權限</a>{% endif %}</nav>
+<div class="sidebar-bottom"><a class="view-site" href="/" target="_blank" rel="noopener">查看網站 <span aria-hidden="true">↗</span></a><div class="account"><span class="avatar">{{ request.user.username|first|upper }}</span><div>{{ request.user.username }}<small>已登入管理帳戶</small></div></div><form method="post" action="/manage/logout/">{% csrf_token %}<button class="quiet" type="submit">登出帳戶</button></form></div></aside>
+<div class="workspace"><header class="topbar"><span>快達通渠 <span class="muted">／ 管理中心</span></span><div class="topbar-actions"><span class="status-dot"></span>本機管理版<a href="/manage/settings/" aria-label="網站設定">⚙</a></div></header><main id="main" tabindex="-1">
+{% if messages %}<div class="messages" role="status">{% for message in messages %}<p class="message {{ message.tags }}">{{ message }}</p>{% endfor %}</div>{% endif %}
+{% block content %}{% endblock %}</main><footer>快達通渠管理中心 <span>修改及數據保存於本機資料庫</span></footer></div></div></body></html>

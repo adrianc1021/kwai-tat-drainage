@@ -1,10 +1,15 @@
 services:
   - type: web
     name: kwai-tat-drainage
-    runtime: static
-    buildCommand: "python3 production/build.py --public"
-    staticPublishPath: production/site
+    runtime: python
+    buildCommand: "pip install -r backend/requirements.txt && python3 production/build.py --public && python3 backend/manage.py migrate && python3 backend/manage.py init_cms && python3 backend/manage.py collectstatic --noinput && python3 backend/manage.py bootstrap_admin"
+    startCommand: "gunicorn --chdir backend config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --access-logfile -"
+    healthCheckPath: /
     pullRequestPreviewsEnabled: false
+    disk:
+      name: cms-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: SITE_URL
         sync: false
@@ -13,4 +18,14 @@ services:
       - key: SITE_WHATSAPP
         sync: false
       - key: PUBLISH_CONFIRMED
+        sync: false
+      - key: CMS_PRODUCTION
+        value: "1"
+      - key: CMS_ALLOWED_HOSTS
+        value: "kwai-tat-drainage.onrender.com"
+      - key: CMS_DATA_DIR
+        value: "/var/data"
+      - key: CMS_ADMIN_USERNAME
+        sync: false
+      - key: CMS_ADMIN_PASSWORD
         sync: false

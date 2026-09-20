@@ -1,0 +1,109 @@
+import copy, io, json, tempfile
+from pathlib import Path
+from PIL import Image
+from django.test import TestCase, Client, override_settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
+from .models import Page, SiteSettings, MediaAsset, Event, Revision, Audit, Inquiry
+from .views import stats
+
+class CMSFlowTests(TestCase):
+    def setUp(self):
+        call_command('init_cms',verbosity=0)
+        self.admin=get_user_model().objects.create_superuser('test_owner',password='Testing-only-random-982!')
+        self.client.force_login(self.admin)
+        self.media_dir=tempfile.TemporaryDirectory()
+        self.override=override_settings(MEDIA_ROOT=self.media_dir.name);self.override.enable()
+    def tearDown(self):self.override.disable();self.media_dir.cleanup()
+    def upload(self):
+        out=io.BytesIO();Image.new('RGB',(120,80),'blue').save(out,format='PNG')
+        return self.client.post('/manage/media/',{'title':'測試圖片','alt':'藍色測試圖','image':SimpleUploadedFile('test.png',out.getvalue(),content_type='image/png')})
+    def test_manager_pages_render(self):
+        for path in ['/manage/','/manage/pages/','/manage/pages/index/','/manage/media/','/manage/settings/','/manage/history/','/manage/inquiries/']:
+            with self.subTest(path=path):self.assertEqual(self.client.get(path).status_code,200)
+    def test_anonymous_cannot_read_or_mutate_management(self):
+        c=Client()
+        for path in ['/manage/','/manage/pages/index/','/manage/media/','/manage/inquiries/','/manage/export/']:
+            self.assertEqual(c.get(path).status_code,302)
+            self.assertEqual(c.post(path,{}).status_code,302)
+    def test_csrf_required(self):
+        c=Client(enforce_csrf_checks=True);c.force_login(self.admin)
+        self.assertEqual(c.post('/manage/settings/',{}).status_code,403)
+        self.assertEqual(c.post('/api/consent/',json.dumps({'choice':'yes'}),content_type='application/json').status_code,403)
+    def test_image_validation_and_private_drafts(self):
+        self.assertEqual(self.upload().status_code,302)
+        a=MediaAsset.objects.get();self.assertEqual(a.width,120)
+        self.assertEqual(Client().get(f'/media/{a.pk}.webp').status_code,404)
+        self.assertEqual(self.client.get(f'/media/{a.pk}.webp').status_code,200)
+        self.assertEqual(Image.open(a.file).format,'WEBP')
+        self.client.post('/manage/media/',{'title':'malicious','alt':'bad','image':SimpleUploadedFile('fake.png',b'<script>alert(1)</script>',content_type='image/png')})
+        self.assertEqual(MediaAsset.objects.count(),1)
+    def test_draft_publish_image_rollback_and_no_xss(self):
+        self.upload();a=MediaAsset.objects.get();page=Page.objects.get(slug='cases');original=copy.deepcopy(page.published)
+        key=next(k for k,v in page.draft['blocks'].items() if v['label']=='h1')
+        data={'version':page.version,'title':'測試新標題','description':'測試描述',key:'<script>alert(1)</script>','image_image_0':str(a.pk),'alt_image_0':'測試主視覺','crop_image_0':'top','action':'save'}
+        self.client.post('/manage/pages/cases/',data)
+        page.refresh_from_db();self.assertEqual(page.published,original)
+        self.assertNotContains(Client().get('/cases.html'),'測試新標題')
+        self.assertEqual(Client().get('/cases.html?preview=draft').status_code,403)
+        self.assertContains(self.client.get('/cases.html?preview=draft'),'&lt;script&gt;')
+        self.client.post('/manage/pages/cases/',{'version':page.version,'action':'publish'})
+        page.refresh_from_db()
+        r=Client().get('/cases.html');self.assertContains(r,'測試新標題');self.assertContains(r,f'/media/{a.pk}.webp');self.assertNotContains(r,'<script>alert(1)</script>')
+        self.assertEqual(Client().get(f'/media/{a.pk}.webp').status_code,200)
+        self.client.post(f'/manage/media/{a.pk}/delete/');self.assertEqual(MediaAsset.objects.count(),1)
+        self.client.post('/manage/pages/cases/',{'version':page.version,'action':'restore','revision':Revision.objects.get().pk})
+        page.refresh_from_db();self.assertEqual(page.draft,original);self.assertNotEqual(page.published,original)
+    def test_stale_version_does_not_overwrite(self):
+        page=Page.objects.get(slug='index')
+        self.client.post('/manage/pages/index/',{'version':0,'title':'bad','description':'bad','action':'save'})
+        page.refresh_from_db();self.assertEqual(page.version,1)
+    def test_editor_cannot_publish_or_view_inquiries(self):
+        u=get_user_model().objects.create_user('editor',password='something-safe',is_staff=True)
+        u.user_permissions.add(Permission.objects.get(codename='change_page'))
+        c=Client();c.force_login(u)
+        self.assertEqual(c.post('/manage/pages/index/',{'action':'publish','version':1}).status_code,403)
+        self.assertEqual(c.get('/manage/inquiries/').status_code,403)
+    def test_contact_configuration_validated_and_rendered(self):
+        self.client.post('/manage/settings/',{'telephone':'javascript:alert(1)','whatsapp':''})
+        self.assertEqual(SiteSettings.objects.get().telephone,'')
+        self.client.post('/manage/settings/',{'telephone':'85200000000','whatsapp':'85200000000'})
+        config=SiteSettings.objects.get()
+        self.assertEqual(config.telephone,'85200000000')
+        self.assertEqual(config.whatsapp,'85200000000')
+
+    def test_published_homepage_media_manifest(self):
+        self.upload();a=MediaAsset.objects.get();page=Page.objects.get(slug='index')
+        self.client.post('/manage/pages/index/',{'version':page.version,'title':page.draft['title'],'description':page.draft['description'],'image_hero_poster':str(a.pk),'alt_hero_poster':'測試首頁封面','crop_hero_poster':'center','action':'save'})
+        page.refresh_from_db()
+        self.client.post('/manage/pages/index/',{'version':page.version,'action':'publish'})
+        payload=self.client.get('/api/public-media/').json()
+        self.assertEqual(payload['media']['index:hero_poster']['url'],f'/media/{a.pk}.webp')
+    def test_inquiry_manual_and_private(self):
+        self.client.post('/manage/inquiries/',{'name':'測試','phone':'00000000','message':'測試內容','channel':'manual','status':'new'})
+        row=Inquiry.objects.get();self.assertEqual(Event.objects.count(),0)
+        self.client.post(f'/manage/inquiries/{row.pk}/status/',{'status':'qualified'});row.refresh_from_db();self.assertEqual(row.status,'qualified')
+        self.assertFalse(Audit.objects.filter(target__contains='00000000').exists())
+        self.client.post(f'/manage/inquiries/{row.pk}/delete/');self.assertEqual(Inquiry.objects.count(),0)
+    def test_analytics_consent_admin_exclusion_allowlist_and_rate(self):
+        c=Client();data={'event':'page_view','page':'index','device':'mobile'}
+        def send(payload):return c.post('/api/event/',json.dumps(payload),content_type='application/json')
+        send(data);self.assertEqual(Event.objects.count(),0)
+        conf=SiteSettings.objects.get();conf.analytics_enabled=True;conf.save()
+        send(data);self.assertEqual(Event.objects.count(),0)
+        c.post('/api/consent/',json.dumps({'choice':'yes'}),content_type='application/json')
+        self.assertEqual(send({**data,'phone':'secret'}).status_code,400)
+        send(data);send(data)
+        send({**data,'event':'whatsapp_click'});send({**data,'event':'whatsapp_click'})
+        self.assertEqual(stats(7)['sessions'],1);self.assertEqual(stats(7)['converted'],1);self.assertEqual(stats(7)['rate'],100)
+        self.assertEqual(stats(7)['pv'],2)
+        c.force_login(self.admin);send(data);self.assertEqual(Event.objects.count(),4)
+        self.assertNotContains(c.get('/index.html'),'data-consent')
+        c.logout();c.post('/api/consent/',json.dumps({'choice':'no'}),content_type='application/json');send(data);self.assertEqual(Event.objects.count(),4)
+    def test_bootstrap_closed_when_user_exists(self):
+        self.assertEqual(Client().get('/manage/setup/').status_code,302)
+    def test_project_files_not_served(self):
+        for path in ['/private/cms.sqlite3','/site-src/build.py','/requirements.txt','/secret.key','/../README.md']:
+            self.assertEqual(Client().get(path).status_code,404)
