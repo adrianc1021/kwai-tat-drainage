@@ -14,7 +14,9 @@ class Headers:
             Throttle.objects.filter(start__lt=timezone.now()-timedelta(days=1)).delete()
         response=self.get_response(request)
         response['Referrer-Policy']='same-origin'
-        response['X-Robots-Tag']='noindex, nofollow'
+        private_path=request.path.startswith(('/manage','/admin','/api')) or 'preview' in request.GET
+        if not settings.PRODUCTION or private_path:
+            response['X-Robots-Tag']='noindex, nofollow'
         response['Permissions-Policy']='camera=(), microphone=(), geolocation=()'
         response['Content-Security-Policy']="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; form-action 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
         if request.path.startswith(('/manage','/admin','/api')) or 'preview' in request.GET:

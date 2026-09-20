@@ -185,6 +185,15 @@ class CMSFlowTests(TestCase):
         self.assertContains(response, 'data-media=\"home-hero\"', html=False)
         self.assertContains(response, 'tel:+85293339580', html=False)
         self.assertContains(response, 'wa.me/85293339580', html=False)
+
+    @override_settings(PRODUCTION=True)
+    def test_production_public_pages_are_not_marked_noindex(self):
+        response = Client().get('/')
+        self.assertNotIn('X-Robots-Tag', response)
+        self.assertEqual(response['Content-Security-Policy'].split(';')[0], "default-src 'self'")
+        private = Client().get('/manage/login/')
+        self.assertEqual(private['X-Robots-Tag'], 'noindex, nofollow')
+
     def test_project_files_not_served(self):
         for path in ['/private/cms.sqlite3','/site-src/build.py','/requirements.txt','/secret.key','/../README.md']:
             self.assertEqual(Client().get(path).status_code,404)
