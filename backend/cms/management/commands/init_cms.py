@@ -13,7 +13,13 @@ class Command(BaseCommand):
         if updates: config.save(update_fields=updates+['updated_at'])
         for slug,name in PAGE_NAMES.items():
             snapshot=initial(slug)
-            page,_=Page.objects.get_or_create(slug=slug,defaults={'name':name,'draft':snapshot,'published':copy.deepcopy(snapshot)})
+            page,created=Page.objects.get_or_create(slug=slug,defaults={'name':name,'draft':snapshot,'published':copy.deepcopy(snapshot)})
+            # Refresh untouched seed pages when the public source copy changes.
+            # Edited drafts remain owned by the CMS user and are never overwritten.
+            if not created and page.draft == page.published and page.published != snapshot:
+                page.draft=copy.deepcopy(snapshot)
+                page.published=copy.deepcopy(snapshot)
+                page.save(update_fields=['draft','published','updated_at'])
             for position,(key,block) in enumerate(page.draft.get('blocks',{}).items()):
                 PageSection.objects.get_or_create(page=page,kind=block.get('label','text'),position=position,defaults={'title':key,'content':{'value':block.get('value','')}})
         roles={

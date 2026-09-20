@@ -9,7 +9,11 @@ class SetupForm(UserCreationForm):
 class SettingsForm(forms.ModelForm):
     class Meta:
         model=SiteSettings
-        fields=['telephone','whatsapp','analytics_enabled']
+        fields=['telephone','whatsapp','announcement','footer_note','analytics_enabled']
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.fields['announcement'].required=False
+        self.fields['footer_note'].required=False
     def clean_telephone(self): return self.number('telephone')
     def clean_whatsapp(self): return self.number('whatsapp')
     def number(self,key):

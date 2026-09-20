@@ -234,6 +234,16 @@ def public_page(request,slug='index'):
     if preview and (not request.user.is_staff or not request.user.has_perm('cms.view_page')):return HttpResponseForbidden()
     config=SiteSettings.objects.get(pk=1)
     html=content.render(slug,page.draft if preview else page.published,config.analytics_enabled and not request.user.is_staff and not preview)
+    if preview:
+        soup=BeautifulSoup(html,'html.parser')
+        robots_tag=soup.select_one('meta[name="robots"]')
+        if robots_tag:
+            robots_tag['content']='noindex, nofollow, noarchive'
+        else:
+            soup.head.append(soup.new_tag('meta',attrs={'name':'robots','content':'noindex, nofollow, noarchive'}))
+        canonical=soup.select_one('link[rel="canonical"]')
+        if canonical: canonical.decompose()
+        html=str(soup)
     seo=getattr(page,'seo',None)
     if seo and not preview:
         soup=BeautifulSoup(html,'html.parser')
@@ -470,12 +480,18 @@ def public_blog(request,slug=None):
 def sitemap(request):
     from xml.sax.saxutils import escape
     base=request.build_absolute_uri('/').rstrip('/')
-    urls=[base+'/' if p.slug=='index' else base+'/'+p.slug+'.html' for p in Page.objects.all()]
-    urls += [base+'/blog/'+p.slug+'/' for p in BlogPost.objects.filter(status='published',deleted_at__isnull=True)]
-    body=''.join(f'<url><loc>{escape(url)}</loc></url>' for url in urls)
+    rows=[]
+    for page in Page.objects.order_by('slug'):
+        seo=getattr(page,'seo',None)
+        if seo and not seo.index: continue
+        url=base+'/' if page.slug=='index' else base+'/'+page.slug+'.html'
+        rows.append((url,page.updated_at))
+    for post in BlogPost.objects.filter(status='published',deleted_at__isnull=True).order_by('slug'):
+        rows.append((base+'/blog/'+post.slug+'/',post.updated_at))
+    body=''.join(f'<url><loc>{escape(url)}</loc><lastmod>{date.date().isoformat()}</lastmod></url>' for url,date in rows)
     return HttpResponse('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',content_type='application/xml')
 
 @require_GET
 def robots(request):
     base=request.build_absolute_uri('/').rstrip('/')
-    return HttpResponse('User-agent: *\nDisallow: /manage/\nDisallow: /admin/\nSitemap: '+base+'/sitemap.xml\n',content_type='text/plain')
+    return HttpResponse('User-agent: *\nDisallow: /manage/\nDisallow: /admin/\nDisallow: /api/\nDisallow: /*?preview=\nSitemap: '+base+'/sitemap.xml\n',content_type='text/plain')

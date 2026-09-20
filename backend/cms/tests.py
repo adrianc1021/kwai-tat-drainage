@@ -147,6 +147,44 @@ class CMSFlowTests(TestCase):
     def test_dynamic_seo_routes_exist(self):
         self.assertEqual(Client().get('/sitemap.xml').status_code,200)
         self.assertEqual(Client().get('/robots.txt').status_code,200)
+
+    def test_public_pages_are_server_rendered_and_have_one_h1(self):
+        routes = ['/', *[f'/{slug}.html' for slug in ('services','drainage','high-pressure','cctv','commercial','pricing','areas','cases','tips','about','faq','contact','privacy')]]
+        for route in routes:
+            with self.subTest(route=route):
+                response = Client().get(route)
+                self.assertEqual(response.status_code, 200)
+                soup = __import__('bs4', fromlist=['BeautifulSoup']).BeautifulSoup(response.content, 'html.parser')
+                self.assertEqual(len(soup.select('main h1')), 1)
+                self.assertNotIn('<div id=\"root\"></div>', response.content.decode())
+                self.assertTrue(soup.title and soup.title.get_text(strip=True))
+                self.assertTrue(soup.select_one('meta[name=\"description\"]'))
+
+    def test_site_copy_settings_are_rendered_from_cms(self):
+        config = SiteSettings.objects.get(pk=1)
+        config.announcement = '測試公告列'
+        config.footer_note = '測試頁尾簡介'
+        config.save()
+        response = Client().get('/')
+        self.assertContains(response, '測試公告列')
+        self.assertContains(response, '測試頁尾簡介')
+
+    def test_preview_is_noindex_and_sitemap_has_lastmod(self):
+        page = Page.objects.get(slug='index')
+        preview = self.client.get('/?preview=draft')
+        self.assertContains(preview, 'noindex, nofollow, noarchive', html=False)
+        self.assertNotContains(preview, 'rel=\"canonical\"', html=False)
+        seo = SeoMetadata.objects.create(page=page, index=False, follow=True)
+        sitemap = Client().get('/sitemap.xml').content.decode()
+        self.assertNotIn('<loc>http://testserver/</loc>', sitemap)
+        self.assertIn('<lastmod>', sitemap)
+        seo.delete()
+
+    def test_homepage_image_and_phone_links_are_present(self):
+        response = Client().get('/')
+        self.assertContains(response, 'data-media=\"home-hero\"', html=False)
+        self.assertContains(response, 'tel:+85293339580', html=False)
+        self.assertContains(response, 'wa.me/85293339580', html=False)
     def test_project_files_not_served(self):
         for path in ['/private/cms.sqlite3','/site-src/build.py','/requirements.txt','/secret.key','/../README.md']:
             self.assertEqual(Client().get(path).status_code,404)

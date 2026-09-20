@@ -63,8 +63,7 @@ def initial(slug):
 def slots(slug):
     """Return image slots that exist in the current public build."""
     if slug == 'index':
-        # The React homepage consumes this through /api/public-media/.
-        return {'hero_poster': ('首頁背景影片封面', '/video-poster.jpg')}
+        return {'hero_poster': ('首頁主視覺圖片', '.hero-media img')}
     soup = source(slug)
     values = {}
     for i, img in enumerate(soup.select('main img')):
@@ -100,9 +99,6 @@ def render(slug, snapshot, tracking=False):
         asset = MediaAsset.objects.filter(pk=placement.get('asset')).first()
         if not asset:
             continue
-        # The React homepage consumes this slot through the public JSON API.
-        if slug == 'index' and key == 'hero_poster':
-            continue
         imgs = soup.select('main img')
         if key.startswith('image_'):
             index = int(key.split('_', 1)[1])
@@ -126,6 +122,12 @@ def render(slug, snapshot, tracking=False):
 
     config = SiteSettings.objects.first()
     if config:
+        announcement = soup.select_one('.announcement-copy')
+        if announcement and config.announcement:
+            announcement.string = config.announcement
+        footer_note = soup.select_one('.footer-note')
+        if footer_note and config.footer_note:
+            footer_note.string = config.footer_note
         for link in soup.select('a[href]'):
             if link['href'] == 'contact.html#whatsapp' and config.whatsapp:
                 link['href'] = 'https://wa.me/' + config.whatsapp

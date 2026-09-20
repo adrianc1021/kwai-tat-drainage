@@ -6,6 +6,8 @@ class SiteSettings(models.Model):
     name=models.CharField('網站名稱',max_length=80,default='快達通渠')
     telephone=models.CharField('已確認電話',max_length=20,blank=True,default='85293339580')
     whatsapp=models.CharField('已確認 WhatsApp',max_length=20,blank=True,default='85293339580')
+    announcement=models.CharField('公告列文字',max_length=180,default='24 小時接受緊急渠務查詢，實際到場時間由客服確認')
+    footer_note=models.CharField('頁尾簡介',max_length=240,default='香港通渠及渠務服務，先了解問題，再安排處理。')
     analytics_enabled=models.BooleanField('啟用經同意的訪問統計',default=False)
     updated_at=models.DateTimeField(auto_now=True)
     class Meta: verbose_name_plural='網站設定'

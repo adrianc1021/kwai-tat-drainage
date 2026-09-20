@@ -1,8 +1,8 @@
 'use strict';
 
 (() => {
+  document.documentElement.classList.add('js-ready');
   const header = document.querySelector('.floating-nav');
-  const hero = document.querySelector('.page-hero');
   const menu = document.querySelector('.menu-toggle');
   const nav = document.querySelector('#site-nav');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -19,8 +19,11 @@
       menu.setAttribute('aria-expanded', String(open));
       nav.classList.toggle('open', open);
     });
-    menu.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') closeMenu();
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && nav.classList.contains('open')) {
+        closeMenu();
+        menu.focus();
+      }
     });
     nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
   }
@@ -52,9 +55,12 @@
 
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
-      if (entry.isIntersecting) entry.target.classList.add('seen');
+      if (entry.isIntersecting) {
+        entry.target.classList.add('seen');
+        observer.unobserve(entry.target);
+      }
     });
-  }, { threshold: 0.15 });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
   document.querySelectorAll('.page-hero__inner,.section-heading,.service-grid,.editorial-list,.facts,.steps,.checklist,.contact-grid,.quote-card-grid,.clarity-card-grid,.media-card-grid').forEach((element) => observer.observe(element));
 
   document.querySelectorAll('[data-channel]').forEach((link) => {
