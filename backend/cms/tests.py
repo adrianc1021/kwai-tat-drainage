@@ -2,6 +2,8 @@ import copy, io, json, tempfile
 from datetime import timedelta
 from pathlib import Path
 from PIL import Image
+from urllib.error import URLError
+from unittest.mock import patch
 from django.test import TestCase, Client, override_settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -67,6 +69,37 @@ class CMSFlowTests(TestCase):
         self.client.post(f'/manage/media/{a.pk}/delete/');self.assertEqual(MediaAsset.objects.count(),1)
         self.client.post('/manage/pages/cases/',{'version':page.version,'action':'restore','revision':Revision.objects.get().pk})
         page.refresh_from_db();self.assertEqual(page.draft,original);self.assertNotEqual(page.published,original)
+
+    @override_settings(RENDER_DEPLOY_HOOK_URL='https://api.render.com/deploy/srv_test')
+    def test_publish_triggers_render_deploy_hook_after_commit(self):
+        page=Page.objects.get(slug='index')
+        class Response:
+            status=201
+            def __enter__(self): return self
+            def __exit__(self,*args): return False
+        with patch('cms.views.urllib.request.urlopen',return_value=Response()) as request:
+            response=self.client.post('/manage/pages/index/',{'version':page.version,'action':'publish'},follow=True)
+        page.refresh_from_db()
+        self.assertEqual(response.status_code,200)
+        self.assertTrue(page.published)
+        request.assert_called_once()
+        self.assertContains(response,'Render 已收到重新部署通知。')
+
+    @override_settings(RENDER_DEPLOY_HOOK_URL='https://api.render.com/deploy/srv_test')
+    def test_publish_remains_public_when_render_deploy_hook_fails(self):
+        page=Page.objects.get(slug='index')
+        with patch('cms.views.urllib.request.urlopen',side_effect=URLError('offline')):
+            response=self.client.post('/manage/pages/index/',{'version':page.version,'action':'publish'},follow=True)
+        self.assertEqual(response.status_code,200)
+        self.assertContains(response,'網站內容已生效')
+        self.assertContains(Client().get('/'),page.published['title'])
+
+    def test_publish_without_render_deploy_hook_is_immediately_public(self):
+        page=Page.objects.get(slug='index')
+        response=self.client.post('/manage/pages/index/',{'version':page.version,'action':'publish'},follow=True)
+        self.assertEqual(response.status_code,200)
+        self.assertContains(response,'網站已立即更新')
+        self.assertContains(Client().get('/'),page.published['title'])
     def test_stale_version_does_not_overwrite(self):
         page=Page.objects.get(slug='index')
         self.client.post('/manage/pages/index/',{'version':0,'title':'bad','description':'bad','action':'save'})

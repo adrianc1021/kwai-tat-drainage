@@ -12,5 +12,8 @@ Render 使用根目錄的 `render.yaml`，建置流程會執行公開網站建�
 - `SITE_PHONE`：`85293339580`
 - `SITE_WHATSAPP`：`85293339580`
 - `PUBLISH_CONFIRMED`：`1`
+- `RENDER_DEPLOY_HOOK_URL`：Render 服務的 Deploy Hook URL（私密環境變數；不應提交到 Git）
+
+後台在「公開套用」成功後會先保存內容到正式資料庫，然後以 server-side POST 通知 Render 重新部署。Render 重建不是內容公開的必要條件，因為公開頁面會即時讀取資料庫；未設定 Deploy Hook 時，後台會明確提示而不會假裝已重新部署。
 
 沒有正式網域時，請不要使用公開建置；建置器會拒絕缺少網域或發布確認的正式輸出。

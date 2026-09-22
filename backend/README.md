@@ -35,6 +35,7 @@
 
 - `CMS_ADMIN_USERNAME`：首次管理員帳戶名稱；
 - `CMS_ADMIN_PASSWORD`：至少 12 個字元的首次管理員密碼。
+- `RENDER_DEPLOY_HOOK_URL`：Render 服務的 Deploy Hook URL，只放在 Render 私密環境變數，不要提交到 Git。
 
 如要使用正式分析整合，請把 OAuth client id、client secret 及 refresh token 只放在 server environment variables。後台只保存 property ID、連接開關、同步時間及錯誤摘要，不會把 secret 或 token 傳到瀏覽器。
 
@@ -56,6 +57,8 @@ CMS_PRODUCTION=1 CMS_ALLOWED_HOSTS=example.com CMS_DATA_DIR=/private/path \
 3. 儲存草稿，打開草稿預覽。
 4. 有發布權限的管理員把已儲存草稿套用到後端網站。
 5. 套用前版本保留在資料庫，可還原為新草稿。
+
+公開套用會先將內容寫入正式資料庫，網站隨即讀取新版本；如已設定 `RENDER_DEPLOY_HOOK_URL`，後台會再由伺服器通知 Render 重新部署。通知失敗不會撤回已公開內容，後台會顯示警告。
 
 頁面文字只接受純文字，不允許貼入 HTML 或 JavaScript。仍被草稿、現行頁面或歷史版本引用的圖片不能刪除。
 

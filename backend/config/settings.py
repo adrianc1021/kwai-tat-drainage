@@ -13,6 +13,7 @@ SECRET_KEY = secret_file.read_text().strip()
 PRODUCTION = os.environ.get('CMS_PRODUCTION') == '1'
 DEBUG = False
 SITE_URL = os.environ.get('SITE_URL', 'https://rapidflowhk.com').rstrip('/')
+RENDER_DEPLOY_HOOK_URL = os.environ.get('RENDER_DEPLOY_HOOK_URL', '').strip()
 ALLOWED_HOSTS = os.environ.get('CMS_ALLOWED_HOSTS','127.0.0.1,localhost,testserver,rapidflowhk.com,www.rapidflowhk.com,kwai-tat-drainage.onrender.com,kwai-tat-drainage-cms.onrender.com').split(',')
 LEGACY_HOSTS = tuple(host.strip().lower() for host in os.environ.get('CMS_LEGACY_HOSTS','kwai-tat-drainage.onrender.com,kwai-tat-drainage-cms.onrender.com').split(',') if host.strip())
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get('CSRF_TRUSTED_ORIGINS','https://rapidflowhk.com,https://www.rapidflowhk.com').split(',') if origin.strip()]

@@ -19,6 +19,8 @@ services:
         sync: false
       - key: PUBLISH_CONFIRMED
         sync: false
+      - key: RENDER_DEPLOY_HOOK_URL
+        sync: false
       - key: CMS_PRODUCTION
         value: "1"
       - key: CMS_ALLOWED_HOSTS

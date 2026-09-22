@@ -1,4 +1,4 @@
-import csv, io, json, secrets, hashlib, hmac, copy, mimetypes, os
+import csv, io, json, secrets, hashlib, hmac, copy, mimetypes, os, urllib.request, urllib.error
 from datetime import timedelta
 from functools import wraps
 from pathlib import Path
@@ -26,6 +26,25 @@ from .forms import (SetupForm, SettingsForm, UploadForm, InquiryForm, BlogPostFo
     BlogCategoryForm, SeoMetadataForm, ServiceForm, ServiceAreaForm, CaseStudyForm,
     ReviewForm, CampaignForm, IntegrationForm, NotificationForm, MediaAssetForm)
 from . import content
+
+def trigger_public_deploy():
+    """Notify Render after a successful publish without exposing the hook to clients."""
+    hook_url = getattr(settings, 'RENDER_DEPLOY_HOOK_URL', '')
+    if not hook_url:
+        return 'not-configured'
+    request = urllib.request.Request(
+        hook_url,
+        data=b'',
+        method='POST',
+        headers={'User-Agent': 'KwaiTatCMS/1.0'},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            if 200 <= response.status < 300:
+                return 'triggered'
+            return 'failed'
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
+        return 'failed'
 
 def guard(permission):
     def decorator(fn):
@@ -117,15 +136,15 @@ def edit_page(request,slug):
     page=get_object_or_404(Page,slug=slug)
     if request.method=='POST':
         if request.POST.get('action')=='publish' and not request.user.has_perm('cms.publish_page'):return HttpResponseForbidden('沒有發布權限。')
+        published = request.POST.get('action') == 'publish'
         with transaction.atomic():
             page=Page.objects.select_for_update().get(pk=page.pk)
             if str(page.version)!=request.POST.get('version'):
                 messages.error(request,'另一個操作已修改此頁。請重新載入後再編輯，避免覆蓋。');return redirect('edit-page',slug=slug)
             snapshot=copy.deepcopy(page.draft)
-            if request.POST.get('action')=='publish':
+            if published:
                 Revision.objects.create(page=page,snapshot=page.published,author=request.user)
-                page.published=copy.deepcopy(page.draft);audit(request,'套用頁面草稿',slug)
-                messages.success(request,'草稿已套用到本機網站。沒有公開部署。')
+                page.published=copy.deepcopy(page.draft);audit(request,'公開套用頁面草稿',slug)
             elif request.POST.get('action')=='restore':
                 revision=get_object_or_404(Revision,pk=request.POST.get('revision'),page=page)
                 page.draft=copy.deepcopy(revision.snapshot);audit(request,'還原歷史至草稿',slug);messages.success(request,'歷史版本已還原為草稿。可先預覽，再套用。')
@@ -146,6 +165,14 @@ def edit_page(request,slug):
                     else:snapshot.setdefault('images',{}).pop(key,None)
                 page.draft=snapshot;audit(request,'儲存頁面草稿',slug);messages.success(request,'草稿已儲存，網站現行內容未更改。')
             page.version+=1;page.save()
+        if published:
+            deploy_status = trigger_public_deploy()
+            if deploy_status == 'triggered':
+                messages.success(request,'草稿已公開套用，Render 已收到重新部署通知。')
+            elif deploy_status == 'failed':
+                messages.warning(request,'草稿已公開套用，但 Render 重新部署通知失敗；網站內容已生效，請檢查 Deploy Hook。')
+            else:
+                messages.success(request,'草稿已公開套用，網站已立即更新；尚未設定 Render Deploy Hook。')
         return redirect('edit-page',slug=slug)
     image_slots=[]
     for key,(label,selector) in content.slots(slug).items():
