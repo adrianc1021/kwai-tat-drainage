@@ -116,7 +116,7 @@ def schema(page):
  url=DATA.get('site_url','').rstrip('/')
  if not url:return ''
  page_url=url+href(page['slug'])
- org={'@type':'LocalBusiness','@id':url+'/#organization','name':DATA['brand'],'url':url+'/','areaServed':{'@type':'AdministrativeArea','name':'香港'},'priceRange':'$$'}
+ org={'@type':'LocalBusiness','@id':url+'/#organization','name':DATA['brand'],'url':url+'/','areaServed':{'@type':'AdministrativeArea','name':'香港'}}
  if DATA.get('telephone'):
   org['telephone']='+'+DATA['telephone']
   org['contactPoint']={'@type':'ContactPoint','telephone':'+'+DATA['telephone'],'contactType':'customer service','availableLanguage':['zh-HK']}
@@ -152,7 +152,7 @@ def inject_home_head(path,public=False):
  document=_upsert_meta(document,r'<meta\s+name=["\']theme-color["\'][^>]*>','<meta name="theme-color" content="#070808">')
  for prop,value in [('og:title',page['title']),('og:description',page['description']),('og:type','website'),('og:locale','zh_HK'),('og:site_name',DATA['brand'])]:
   document=_upsert_meta(document,rf'<meta\s+property=["\']{re.escape(prop)}["\'][^>]*>','<meta property="'+prop+'" content="'+ESC(value)+'">')
- document=_upsert_meta(document,r'<meta\s+name=["\']twitter:card["\'][^>]*>','<meta name="twitter:card" content="summary_large_image">')
+ document=_upsert_meta(document,r'<meta\s+name=["\']twitter:card["\'][^>]*>','<meta name="twitter:card" content="summary">')
  if SOCIAL_IMAGE not in document:
   document=document.replace('</head>','<link rel="preload" as="image" href="'+SOCIAL_IMAGE+'" fetchpriority="high">'+'</head>',1)
  if DATA.get('site_url'):
@@ -166,8 +166,8 @@ def inject_home_head(path,public=False):
  path.write_text(document)
 def render(page,public=False):
  slug=page['slug'];home=slug=='index';canonical=DATA.get('site_url','').rstrip('/')+href(slug)
- title=ESC(page['title']);desc=ESC(page['description']);nav=[('/#problems','問題分流'),('/#services','服務'),('/about.html','關於快達通渠'),('/pricing.html','報價流程'),('/cases.html','工程案例'),('/areas.html','服務地區'),('/tips.html','通渠小知識'),('/#faq','常見問題')]
- head=f'<!doctype html><html lang="zh-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101416"><title>{title}</title><meta name="description" content="{desc}"><meta name="author" content="{ESC(DATA["brand"])}"><meta name="robots" content="{"index,follow" if public else "noindex,nofollow"}"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/theme.css"><link rel="preload" as="font" type="font/ttf" href="/media-assets/noto-hk.ttf" crossorigin><meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:type" content="website"><meta property="og:locale" content="zh_HK"><meta property="og:site_name" content="{ESC(DATA["brand"])}"><meta name="twitter:card" content="summary_large_image"><meta property="og:image:alt" content="快達通渠通渠及渠務服務主視覺">'
+ title=ESC(page['title']);desc=ESC(page['description']);nav=[('/#problems','問題分流'),('/#services','服務'),('/about.html','關於快達通渠'),('/pricing.html','報價流程'),('/cases.html','工程案例'),('/areas.html','服務地區'),('/tips.html','通渠小知識'),('/faq.html','常見問題')]
+ head=f'<!doctype html><html lang="zh-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101416"><title>{title}</title><meta name="description" content="{desc}"><meta name="author" content="{ESC(DATA["brand"])}"><meta name="robots" content="{"index,follow" if public else "noindex,nofollow"}"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/theme.css"><link rel="preload" as="font" type="font/ttf" href="/media-assets/noto-hk.ttf" crossorigin><meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:type" content="website"><meta property="og:locale" content="zh_HK"><meta property="og:site_name" content="{ESC(DATA["brand"])}"><meta name="twitter:card" content="summary"><meta property="og:image:alt" content="快達通渠通渠及渠務服務主視覺">'
  if home:head+=f'<link rel="preload" as="image" href="{SOCIAL_IMAGE}" fetchpriority="high">'
  if DATA.get('site_url'):
   head+=f'<link rel="canonical" href="{ESC(canonical)}"><meta property="og:url" content="{ESC(canonical)}"><meta property="og:image" content="{ESC(DATA["site_url"].rstrip("/")+SOCIAL_IMAGE)}"><meta property="og:image:width" content="333"><meta property="og:image:height" content="374"><meta name="twitter:image" content="{ESC(DATA["site_url"].rstrip("/")+SOCIAL_IMAGE)}">'

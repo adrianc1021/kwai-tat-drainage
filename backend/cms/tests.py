@@ -203,3 +203,25 @@ class CMSFlowTests(TestCase):
     def test_project_files_not_served(self):
         for path in ['/private/cms.sqlite3','/site-src/build.py','/requirements.txt','/secret.key','/../README.md']:
             self.assertEqual(Client().get(path).status_code,404)
+
+    def test_public_blog_has_independent_indexable_metadata(self):
+        from bs4 import BeautifulSoup
+        post=BlogPost.objects.create(title='渠管檢查',slug='pipe-check',excerpt='了解渠道檢查安排。',content='文章內容',status='published')
+        response=Client().get('/blog/pipe-check/')
+        soup=BeautifulSoup(response.content,'html.parser')
+        self.assertEqual(soup.select_one('meta[name="robots"]')['content'],'index, follow')
+        self.assertEqual(soup.select_one('meta[name="description"]')['content'],post.excerpt)
+        self.assertNotContains(response,'網站管理後台')
+        self.assertEqual(len(soup.select('h1')),1)
+        SeoMetadata.objects.create(post=post,index=False,title='文章自訂標題')
+        response=Client().get('/blog/pipe-check/')
+        self.assertContains(response,'文章自訂標題')
+        self.assertContains(response,'noindex, follow')
+        self.assertNotContains(Client().get('/sitemap.xml'),'/blog/pipe-check/')
+
+    def test_sitemap_and_robots_use_configured_origin(self):
+        from unittest.mock import patch
+        with patch.dict('os.environ',{'SITE_URL':'https://rapidflowhk.com'}):
+            self.assertContains(Client().get('/sitemap.xml'),'https://rapidflowhk.com/')
+            self.assertNotContains(Client().get('/sitemap.xml'),'http://testserver')
+            self.assertContains(Client().get('/robots.txt'),'https://rapidflowhk.com/sitemap.xml')

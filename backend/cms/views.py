@@ -480,24 +480,33 @@ def notifications(request):
     return render(request,'portal/notifications.html',{'active':'notifications','rows':Notification.objects.order_by('-created_at'),'form':form})
 
 def public_blog(request,slug=None):
-    if slug:
-        post=get_object_or_404(BlogPost,slug=slug,status='published',deleted_at__isnull=True)
-        BlogPost.objects.filter(pk=post.pk).update(views=F('views')+1);post.refresh_from_db()
-        response=render(request,'portal/public_blog.html',{'post':post})
-        soup=BeautifulSoup(response.content,'html.parser')
-        base=os.environ.get('SITE_URL','').rstrip('/') or request.build_absolute_uri('/').rstrip('/')
-        canonical=base+'/blog/'+post.slug+'/'
-        if soup.title: soup.title.string=post.title+'｜快達通渠'
-        description=soup.find('meta',attrs={'name':'description'})
-        if not description:
-            description=soup.new_tag('meta',attrs={'name':'description'});soup.head.append(description)
-        description['content']=post.excerpt or post.title
-        link=soup.find('link',rel='canonical')
-        if not link: link=soup.new_tag('link',rel='canonical');soup.head.append(link)
-        link['href']=canonical
-        return HttpResponse(str(soup))
-    posts=BlogPost.objects.filter(status='published',deleted_at__isnull=True).order_by('-published_at','-updated_at')
-    return render(request,'portal/public_blog_list.html',{'posts':posts})
+    base=os.environ.get('SITE_URL','').rstrip('/') or request.build_absolute_uri('/').rstrip('/')
+    posts=BlogPost.objects.filter(status='published',deleted_at__isnull=True)
+    post=get_object_or_404(posts,slug=slug) if slug else None
+    seo=getattr(post,'seo',None) if post else None
+    title=(seo.title if seo and seo.title else post.title+'｜快達通渠') if post else '通渠文章及家居排水知識｜快達通渠'
+    description=(seo.description if seo and seo.description else post.excerpt or post.content[:160]) if post else '閱讀快達通渠的通渠、家居排水保養及渠道檢查文章，了解常見問題和查詢安排。'
+    canonical=(seo.canonical if seo and seo.canonical else base+'/blog/'+post.slug+'/') if post else base+'/blog/'
+    index=(seo.index if seo else True) if post else posts.exists()
+    follow=seo.follow if seo else True
+    context={'post':post,'posts':posts.order_by('-published_at','-updated_at'), 'seo_title':title,
+             'seo_description':description,'canonical':canonical,
+             'robots':('index' if index else 'noindex')+', '+('follow' if follow else 'nofollow'),
+             'og_title':seo.og_title if seo and seo.og_title else title,
+             'og_description':seo.og_description if seo and seo.og_description else description}
+    asset=(seo.og_image if seo and seo.og_image else post.cover) if post else None
+    context['og_image']=base+'/media/'+str(asset.pk)+'.webp' if asset else base+'/media-assets/hero.webp'
+    if post:
+        BlogPost.objects.filter(pk=post.pk).update(views=F('views')+1)
+        article={'@context':'https://schema.org','@type':'BlogPosting','headline':title,
+                 'description':description,'url':canonical,'mainEntityOfPage':canonical,
+                 'inLanguage':'zh-HK','author':{'@type':'Organization','name':'快達通渠','url':base+'/'},
+                 'publisher':{'@type':'Organization','name':'快達通渠','url':base+'/'},
+                 'dateModified':post.updated_at.isoformat()}
+        if post.published_at: article['datePublished']=post.published_at.isoformat()
+        if asset: article['image']=context['og_image']
+        context['article_schema']=json.dumps(article,ensure_ascii=False).replace('<','\\u003c')
+    return render(request,'portal/public_blog.html' if post else 'portal/public_blog_list.html',context)
 
 @require_GET
 def sitemap(request):
@@ -508,8 +517,11 @@ def sitemap(request):
         seo=getattr(page,'seo',None)
         if seo and not seo.index: continue
         url=base+'/' if page.slug=='index' else base+'/'+page.slug+'.html'
+        if seo and seo.canonical and seo.canonical != url: continue
         rows.append((url,page.updated_at))
     for post in BlogPost.objects.filter(status='published',deleted_at__isnull=True).order_by('slug'):
+        seo=getattr(post,'seo',None)
+        if seo and (not seo.index or (seo.canonical and seo.canonical != base+'/blog/'+post.slug+'/')): continue
         rows.append((base+'/blog/'+post.slug+'/',post.updated_at))
     body=''.join(f'<url><loc>{escape(url)}</loc><lastmod>{date.date().isoformat()}</lastmod></url>' for url,date in rows)
     return HttpResponse('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',content_type='application/xml')
