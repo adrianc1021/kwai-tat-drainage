@@ -1,4 +1,4 @@
-import csv, io, json, secrets, hashlib, hmac, copy, mimetypes
+import csv, io, json, secrets, hashlib, hmac, copy, mimetypes, os
 from datetime import timedelta
 from functools import wraps
 from pathlib import Path
@@ -483,14 +483,26 @@ def public_blog(request,slug=None):
     if slug:
         post=get_object_or_404(BlogPost,slug=slug,status='published',deleted_at__isnull=True)
         BlogPost.objects.filter(pk=post.pk).update(views=F('views')+1);post.refresh_from_db()
-        return render(request,'portal/public_blog.html',{'post':post})
+        response=render(request,'portal/public_blog.html',{'post':post})
+        soup=BeautifulSoup(response.content,'html.parser')
+        base=os.environ.get('SITE_URL','').rstrip('/') or request.build_absolute_uri('/').rstrip('/')
+        canonical=base+'/blog/'+post.slug+'/'
+        if soup.title: soup.title.string=post.title+'｜快達通渠'
+        description=soup.find('meta',attrs={'name':'description'})
+        if not description:
+            description=soup.new_tag('meta',attrs={'name':'description'});soup.head.append(description)
+        description['content']=post.excerpt or post.title
+        link=soup.find('link',rel='canonical')
+        if not link: link=soup.new_tag('link',rel='canonical');soup.head.append(link)
+        link['href']=canonical
+        return HttpResponse(str(soup))
     posts=BlogPost.objects.filter(status='published',deleted_at__isnull=True).order_by('-published_at','-updated_at')
     return render(request,'portal/public_blog_list.html',{'posts':posts})
 
 @require_GET
 def sitemap(request):
     from xml.sax.saxutils import escape
-    base=request.build_absolute_uri('/').rstrip('/')
+    base=os.environ.get('SITE_URL','').rstrip('/') or request.build_absolute_uri('/').rstrip('/')
     rows=[]
     for page in Page.objects.order_by('slug'):
         seo=getattr(page,'seo',None)
@@ -504,5 +516,5 @@ def sitemap(request):
 
 @require_GET
 def robots(request):
-    base=request.build_absolute_uri('/').rstrip('/')
+    base=os.environ.get('SITE_URL','').rstrip('/') or request.build_absolute_uri('/').rstrip('/')
     return HttpResponse('User-agent: *\nDisallow: /manage/\nDisallow: /admin/\nDisallow: /api/\nDisallow: /*?preview=\nSitemap: '+base+'/sitemap.xml\n',content_type='text/plain')
