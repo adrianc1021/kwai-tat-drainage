@@ -1,5 +1,6 @@
 """Build the allowlisted public site. No internal files or credentials are copied."""
 import argparse, html, json, os, re, shutil
+from datetime import date
 from pathlib import Path
 from urllib.parse import quote
 ROOT=Path(__file__).resolve().parent
@@ -116,11 +117,11 @@ def schema(page):
  url=DATA.get('site_url','').rstrip('/')
  if not url:return ''
  page_url=url+href(page['slug'])
- org={'@type':'LocalBusiness','@id':url+'/#organization','name':DATA['brand'],'url':url+'/','areaServed':{'@type':'AdministrativeArea','name':'香港'}}
+ org={'@type':'LocalBusiness','@id':url+'/#organization','name':DATA['brand'],'url':url+'/','areaServed':{'@type':'AdministrativeArea','name':'香港'},'serviceType':['家居通渠','高壓水力清洗','CCTV 渠道檢查','商業及大廈渠務'],'image':url+SOCIAL_IMAGE}
  if DATA.get('telephone'):
   org['telephone']='+'+DATA['telephone']
   org['contactPoint']={'@type':'ContactPoint','telephone':'+'+DATA['telephone'],'contactType':'customer service','availableLanguage':['zh-HK']}
- website={'@type':'WebSite','@id':url+'/#website','url':url+'/','name':DATA['brand'],'inLanguage':'zh-HK','publisher':{'@id':org['@id']}}
+ website={'@type':'WebSite','@id':url+'/#website','url':url+'/','name':DATA['brand'],'inLanguage':'zh-HK','publisher':{'@id':org['@id']},'potentialAction':{'@type':'SearchAction','target':url+'/faq.html','query-input':'required name=search_term_string'}}
  webpage={'@type':'WebPage','@id':page_url+'#webpage','url':page_url,'name':page['title'],'description':page['description'],'inLanguage':'zh-HK','isPartOf':{'@id':website['@id']},'about':{'@id':org['@id']}}
  graph=[org,website,webpage]
  if page['slug']!='index':
@@ -170,11 +171,12 @@ def render(page,public=False):
  head=f'<!doctype html><html lang="zh-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101416"><title>{title}</title><meta name="description" content="{desc}"><meta name="author" content="{ESC(DATA["brand"])}"><meta name="robots" content="{"index,follow" if public else "noindex,nofollow"}"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/theme.css"><link rel="preload" as="font" type="font/ttf" href="/media-assets/noto-hk.ttf" crossorigin><meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:type" content="website"><meta property="og:locale" content="zh_HK"><meta property="og:site_name" content="{ESC(DATA["brand"])}"><meta name="twitter:card" content="summary"><meta property="og:image:alt" content="快達通渠通渠及渠務服務主視覺">'
  if home:head+=f'<link rel="preload" as="image" href="{SOCIAL_IMAGE}" fetchpriority="high">'
  if DATA.get('site_url'):
-  head+=f'<link rel="canonical" href="{ESC(canonical)}"><meta property="og:url" content="{ESC(canonical)}"><meta property="og:image" content="{ESC(DATA["site_url"].rstrip("/")+SOCIAL_IMAGE)}"><meta property="og:image:width" content="333"><meta property="og:image:height" content="374"><meta name="twitter:image" content="{ESC(DATA["site_url"].rstrip("/")+SOCIAL_IMAGE)}">'
+  image_url=DATA["site_url"].rstrip("/")+SOCIAL_IMAGE
+  head+=f'<link rel="canonical" href="{ESC(canonical)}"><meta property="og:url" content="{ESC(canonical)}"><meta property="og:image" content="{ESC(image_url)}"><meta property="og:image:type" content="image/webp"><meta property="og:image:width" content="333"><meta property="og:image:height" content="374"><meta name="twitter:title" content="{title}"><meta name="twitter:description" content="{desc}"><meta name="twitter:image" content="{ESC(image_url)}">'
  head+=schema(page)+'</head>'
  body=f'<body data-page="{slug}" class="{"home" if home else "inner"}"><a class="skip-link" href="#main">跳至主要內容</a><aside class="announcement-bar" role="note"><div class="container announcement-bar__inner"><span class="announcement-bar__dot" aria-hidden="true"></span><span class="announcement-copy">{ESC(DATA.get("announcement","24 小時接受緊急渠務查詢，實際到場時間由客服確認"))}</span><a href="/pricing.html">了解安排 <span aria-hidden="true">↗</span></a></div></aside><header class="floating-nav"><div class="nav-inner"><a class="brand-mark" href="/" aria-label="快達通渠首頁"><span class="brand-mark__dot" aria-hidden="true"></span><span>快達通渠</span></a><nav id="site-nav" class="desktop-nav" aria-label="主要導航">'
  for url,n in nav:body+=f'<a href="{url}"'+(' aria-current="page"' if n==page['name'] or (n=='服務' and (slug=='services' or page.get('parent')=='services')) else '')+f'>{n}</a>'
- body+='</nav><div class="nav-actions"><a class="nav-phone" href="tel:+'+ESC(DATA.get('telephone',''))+'" aria-label="致電快達通渠">'+ESC(phone_display(DATA.get('telephone','')) )+'</a>'+cta('whatsapp','WhatsApp','header')+'<button class="menu-toggle" type="button" aria-controls="site-nav" aria-expanded="false"><span class="sr-only">開啟選單</span><span aria-hidden="true"></span><span aria-hidden="true"></span></button></div></div></header><main id="main">'
+ body+='</nav><div class="nav-actions"><a class="nav-phone" href="tel:+'+ESC(DATA.get('telephone',''))+'" aria-label="致電快達通渠">'+ESC(phone_display(DATA.get('telephone','')) )+'</a>'+cta('whatsapp','WhatsApp 即時查詢','header')+'<button class="menu-toggle" type="button" aria-controls="site-nav" aria-expanded="false"><span class="sr-only">開啟選單</span><span aria-hidden="true"></span><span aria-hidden="true"></span></button></div></div></header><main id="main">'
  if home:
   body+='<div class="hero-stage"><section class="hero" data-section="首頁"><div class="hero-media">'+photo('hero','home-hero',True)+'</div><img class="pipe-art" src="/media-assets/pipe.svg" width="1000" height="700" alt="" aria-hidden="true"><div class="hero-copy container">'
  else:
@@ -212,7 +214,7 @@ def build(public=False):
  robots='User-agent: *\nDisallow: /manage/\nDisallow: /admin/\nDisallow: /api/\n'
  if public:robots+='Sitemap: '+DATA['site_url'].rstrip('/')+'/sitemap.xml\n'
  (OUT/'robots.txt').write_text(robots)
- urls=''.join('<url><loc>'+ESC(DATA['site_url'].rstrip('/')+href(p['slug']))+'</loc></url>' for p in DATA['pages']) if public else ''
+ urls=''.join('<url><loc>'+ESC(DATA['site_url'].rstrip('/')+href(p['slug']))+'</loc><lastmod>'+date.today().isoformat()+'</lastmod><changefreq>'+('weekly' if p['slug'] in ('index','tips','faq') else 'monthly')+'</changefreq><priority>'+('1.0' if p['slug']=='index' else '0.8')+'</priority></url>' for p in DATA['pages']) if public else ''
  (OUT/'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+urls+'</urlset>')
  error=dict(slug='404',name='找不到頁面',title='找不到頁面｜快達通渠',description='此頁面不存在。請返回首頁或查詢通渠服務。',eyebrow='404',heading=['找不到這個頁面'],lead='網址可能有誤，或頁面已更新。你可以返回首頁，或前往聯絡頁查詢。',sections=[])
  (OUT/'404.html').write_text(render(error,False))
