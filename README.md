@@ -4,11 +4,11 @@
 
 Render 使用根目錄的 `render.yaml`，建置流程會執行公開網站建置、Django migration 及靜態檔案收集，並以 Python Web Service 同時提供網站及管理後台。
 
-管理後台版本已加入 Django。要在現有 Render 服務啟用後台，需在 Render 將 Blueprint 同步為 `render.yaml` 的 Python Web Service，並設定 `CMS_ADMIN_USERNAME`、`CMS_ADMIN_PASSWORD` 兩個私密環境變數；部署後後台入口為 `/manage/`，圖片素材庫為 `/manage/media/`。Render 必須保留 `cms-data` 持久化磁碟，否則上載圖片及草稿不會保留。
+管理後台版本已加入 Django。正式網站及後台使用 `https://rapidflowhk.com/` 及 `https://rapidflowhk.com/manage/`；舊的 Render 網址會永久轉址到新網域，並保留原有路徑及查詢參數。要在現有 Render 服務啟用後台，需在 Render 將 Blueprint 同步為 `render.yaml` 的 Python Web Service，並設定 `CMS_ADMIN_USERNAME`、`CMS_ADMIN_PASSWORD` 兩個私密環境變數。Render 必須保留 `cms-data` 持久化磁碟，否則上載圖片及草稿不會保留。
 
 部署前需要在 Render 設定以下環境變數：
 
-- `SITE_URL`：正式 HTTPS 網域
+- `SITE_URL`：`https://rapidflowhk.com`
 - `SITE_PHONE`：`85293339580`
 - `SITE_WHATSAPP`：`85293339580`
 - `PUBLISH_CONFIRMED`：`1`

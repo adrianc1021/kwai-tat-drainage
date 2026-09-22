@@ -1,10 +1,15 @@
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, HttpResponsePermanentRedirect
 from django.conf import settings
 class Headers:
     def __init__(self,get_response): self.get_response=get_response
     def __call__(self,request):
         if not settings.PRODUCTION and request.META.get('REMOTE_ADDR','') not in ('127.0.0.1','::1',''):
             return HttpResponseForbidden('本機管理系統只接受本機連線。')
+        # Keep the old Render host as a migration path while making the custom
+        # domain the single public origin for SEO, cookies and shared links.
+        request_host=request.get_host().split(':',1)[0].lower()
+        if settings.PRODUCTION and request_host in settings.LEGACY_HOSTS:
+            return HttpResponsePermanentRedirect(settings.SITE_URL + request.get_full_path())
         from django.core.cache import cache
         if cache.add('retention-check',True,3600):
             from django.utils import timezone

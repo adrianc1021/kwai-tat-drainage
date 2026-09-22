@@ -159,16 +159,24 @@ def edit_page(request,slug):
 def media(request):
     form=UploadForm(request.POST or None,request.FILES or None)
     if request.method=='POST':
-        if not request.user.has_perm('cms.add_mediaasset'):return HttpResponseForbidden()
+        if not request.user.has_perm('cms.add_mediaasset'):
+            return HttpResponseForbidden('你的帳戶沒有上載圖片的權限。請聯絡管理員。')
         if form.is_valid():
+            asset=None
             try:
                 image=ImageOps.exif_transpose(Image.open(form.cleaned_data['image']))
                 image.thumbnail((3200,3200));image=image.convert('RGBA' if 'A' in image.getbands() else 'RGB')
                 buffer=io.BytesIO();image.save(buffer,format='WEBP',quality=85,method=4)
-                asset=MediaAsset(title=form.cleaned_data['title'],alt=form.cleaned_data['alt'],width=image.width,height=image.height,size=buffer.tell())
-                asset.file.save(f'{asset.pk}.webp',ContentFile(buffer.getvalue()),save=True)
-                audit(request,'上載圖片',str(asset.pk));messages.success(request,'圖片已上載。前往頁面編輯選擇圖片，再套用草稿。');return redirect('media')
-            except (OSError,ValueError,Image.DecompressionBombError):form.add_error('image','無法安全處理此圖片，請改用有效的 JPG、PNG 或 WebP。')
+                with transaction.atomic():
+                    asset=MediaAsset(title=form.cleaned_data['title'],alt=form.cleaned_data['alt'],width=image.width,height=image.height,size=buffer.tell())
+                    asset.file.save(f'{asset.pk}.webp',ContentFile(buffer.getvalue()),save=True)
+                    audit(request,'上載圖片',str(asset.pk))
+                messages.success(request,'圖片已上載。前往頁面編輯選擇圖片，再套用草稿。');return redirect('media')
+            except (OSError,ValueError,Image.DecompressionBombError):
+                if asset and asset.file.name:
+                    try: asset.file.delete(save=False)
+                    except OSError: pass
+                form.add_error('image','無法儲存此圖片，請確認檔案是 JPG、PNG 或 WebP，並重試。')
     assets=MediaAsset.objects.all().order_by('-created_at')
     if request.GET.get('q'):assets=assets.filter(title__icontains=request.GET['q'][:120])
     return render(request,'portal/media.html',{'active':'media','assets':assets,'form':form,'total_size':sum(a.size for a in assets),'q':request.GET.get('q','')})
@@ -511,7 +519,7 @@ def public_blog(request,slug=None):
 @require_GET
 def sitemap(request):
     from xml.sax.saxutils import escape
-    base=os.environ.get('SITE_URL','').rstrip('/') or request.build_absolute_uri('/').rstrip('/')
+    base=(settings.SITE_URL or request.build_absolute_uri('/')).rstrip('/')
     rows=[]
     for page in Page.objects.order_by('slug'):
         seo=getattr(page,'seo',None)
@@ -528,5 +536,5 @@ def sitemap(request):
 
 @require_GET
 def robots(request):
-    base=os.environ.get('SITE_URL','').rstrip('/') or request.build_absolute_uri('/').rstrip('/')
+    base=(settings.SITE_URL or request.build_absolute_uri('/')).rstrip('/')
     return HttpResponse('User-agent: *\nDisallow: /manage/\nDisallow: /admin/\nDisallow: /api/\nDisallow: /*?preview=\nSitemap: '+base+'/sitemap.xml\n',content_type='text/plain')

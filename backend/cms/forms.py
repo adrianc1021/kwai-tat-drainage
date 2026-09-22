@@ -1,3 +1,5 @@
+from pathlib import Path
+import re
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import get_user_model
@@ -21,9 +23,18 @@ class SettingsForm(forms.ModelForm):
         if value and (not value.isascii() or not value.isdigit() or not 8<=len(value)<=15): raise forms.ValidationError('請填寫包含國際區號的 8–15 位數字，例如香港區號 852。')
         return value
 class UploadForm(forms.Form):
-    title=forms.CharField(label='圖片名稱',max_length=120)
-    alt=forms.CharField(label='替代文字',max_length=300,help_text='描述圖片內容，方便讀屏使用者理解。')
-    image=forms.ImageField(label='圖片檔案',help_text='JPG、PNG、WebP，上限 10 MB。系統會驗證、移除中繼資料並轉為 WebP。')
+    title=forms.CharField(label='圖片名稱',max_length=120,required=False,help_text='可留空，系統會使用檔案名稱。')
+    alt=forms.CharField(label='替代文字',max_length=300,required=False,help_text='一般內容圖片建議填寫；裝飾圖片可留空，之後仍可編輯。')
+    image=forms.ImageField(label='圖片檔案',help_text='只支援 JPG、PNG、WebP，上限 10 MB。系統會驗證、移除中繼資料並轉為 WebP。',widget=forms.ClearableFileInput(attrs={'accept':'.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp'}))
+
+    def clean_title(self):
+        title=self.cleaned_data.get('title','').strip()
+        if title:return title
+        upload=self.files.get('image')
+        stem=Path(getattr(upload,'name','')).stem
+        stem=re.sub(r'[\r\n\t]+',' ',stem).strip()
+        return stem[:120] or '未命名圖片'
+
     def clean_image(self):
         value=self.cleaned_data['image']
         if value.size>10*1024*1024:raise forms.ValidationError('圖片不可超過 10 MB。')

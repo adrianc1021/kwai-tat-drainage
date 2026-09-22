@@ -12,7 +12,7 @@ services:
       sizeGB: 1
     envVars:
       - key: SITE_URL
-        sync: false
+        value: "https://rapidflowhk.com"
       - key: SITE_PHONE
         sync: false
       - key: SITE_WHATSAPP
@@ -22,7 +22,9 @@ services:
       - key: CMS_PRODUCTION
         value: "1"
       - key: CMS_ALLOWED_HOSTS
-        value: "kwai-tat-drainage.onrender.com,kwai-tat-drainage-cms.onrender.com,rapidflowhk.com,www.rapidflowhk.com"
+        value: "rapidflowhk.com,www.rapidflowhk.com,kwai-tat-drainage.onrender.com,kwai-tat-drainage-cms.onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://rapidflowhk.com,https://www.rapidflowhk.com"
       - key: CMS_DATA_DIR
         value: "/var/data"
       - key: CMS_ADMIN_USERNAME

@@ -12,7 +12,10 @@ if not secret_file.exists():
 SECRET_KEY = secret_file.read_text().strip()
 PRODUCTION = os.environ.get('CMS_PRODUCTION') == '1'
 DEBUG = False
-ALLOWED_HOSTS = os.environ.get('CMS_ALLOWED_HOSTS','127.0.0.1,localhost,testserver').split(',')
+SITE_URL = os.environ.get('SITE_URL', 'https://rapidflowhk.com').rstrip('/')
+ALLOWED_HOSTS = os.environ.get('CMS_ALLOWED_HOSTS','127.0.0.1,localhost,testserver,rapidflowhk.com,www.rapidflowhk.com,kwai-tat-drainage.onrender.com,kwai-tat-drainage-cms.onrender.com').split(',')
+LEGACY_HOSTS = tuple(host.strip().lower() for host in os.environ.get('CMS_LEGACY_HOSTS','kwai-tat-drainage.onrender.com,kwai-tat-drainage-cms.onrender.com').split(',') if host.strip())
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get('CSRF_TRUSTED_ORIGINS','https://rapidflowhk.com,https://www.rapidflowhk.com').split(',') if origin.strip()]
 INSTALLED_APPS = ['django.contrib.admin','django.contrib.auth','django.contrib.contenttypes','django.contrib.sessions','django.contrib.messages','django.contrib.staticfiles','cms.apps.CmsConfig']
 MIDDLEWARE = ['django.middleware.security.SecurityMiddleware','django.contrib.sessions.middleware.SessionMiddleware','django.middleware.common.CommonMiddleware','django.middleware.csrf.CsrfViewMiddleware','django.contrib.auth.middleware.AuthenticationMiddleware','django.contrib.messages.middleware.MessageMiddleware','django.middleware.clickjacking.XFrameOptionsMiddleware','cms.middleware.Headers']
 ROOT_URLCONF = 'config.urls'
@@ -46,8 +49,9 @@ SECURE_HSTS_PRELOAD=PRODUCTION
 SECURE_REFERRER_POLICY='same-origin'
 SECURE_CONTENT_TYPE_NOSNIFF=True
 X_FRAME_OPTIONS='DENY'
-DATA_UPLOAD_MAX_MEMORY_SIZE=12*1024*1024
-FILE_UPLOAD_MAX_MEMORY_SIZE=12*1024*1024
+# Leave room for multipart form fields and boundaries around the 10 MB image limit.
+DATA_UPLOAD_MAX_MEMORY_SIZE=16*1024*1024
+FILE_UPLOAD_MAX_MEMORY_SIZE=16*1024*1024
 FILE_UPLOAD_PERMISSIONS=0o600
 # No URL/query/IP access log persistence; analytics uses an allowlist instead.
 LOGGING={'version':1,'disable_existing_loggers':False,'handlers':{'null':{'class':'logging.NullHandler'}},'loggers':{'django.server':{'handlers':['null'],'propagate':False}}}

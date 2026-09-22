@@ -22,6 +22,13 @@ class CMSFlowTests(TestCase):
     def upload(self):
         out=io.BytesIO();Image.new('RGB',(120,80),'blue').save(out,format='PNG')
         return self.client.post('/manage/media/',{'title':'測試圖片','alt':'藍色測試圖','image':SimpleUploadedFile('test.png',out.getvalue(),content_type='image/png')})
+    def test_image_upload_can_use_file_name_defaults(self):
+        out=io.BytesIO();Image.new('RGB',(120,80),'green').save(out,format='JPEG')
+        response=self.client.post('/manage/media/',{'image':SimpleUploadedFile('kitchen-drain.jpeg',out.getvalue(),content_type='image/jpeg')})
+        self.assertEqual(response.status_code,302)
+        asset=MediaAsset.objects.get()
+        self.assertEqual(asset.title,'kitchen-drain')
+        self.assertEqual(asset.alt,'')
     def test_manager_pages_render(self):
         for path in ['/manage/','/manage/pages/','/manage/pages/index/','/manage/media/','/manage/settings/','/manage/history/','/manage/inquiries/']:
             with self.subTest(path=path):self.assertEqual(self.client.get(path).status_code,200)
@@ -193,6 +200,18 @@ class CMSFlowTests(TestCase):
         self.assertEqual(response['Content-Security-Policy'].split(';')[0], "default-src 'self'")
         private = Client().get('/manage/login/')
         self.assertEqual(private['X-Robots-Tag'], 'noindex, nofollow')
+
+    @override_settings(PRODUCTION=True, SITE_URL='https://rapidflowhk.com')
+    def test_legacy_render_host_redirects_to_primary_domain(self):
+        response = Client().get('/pricing.html?from=old-host', HTTP_HOST='kwai-tat-drainage-cms.onrender.com')
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response['Location'], 'https://rapidflowhk.com/pricing.html?from=old-host')
+
+    def test_primary_domain_is_used_for_sitemap_and_robots(self):
+        sitemap = Client().get('/sitemap.xml', HTTP_HOST='rapidflowhk.com').content.decode()
+        robots = Client().get('/robots.txt', HTTP_HOST='rapidflowhk.com').content.decode()
+        self.assertIn('<loc>https://rapidflowhk.com/</loc>', sitemap)
+        self.assertIn('Sitemap: https://rapidflowhk.com/sitemap.xml', robots)
 
     def test_unknown_public_path_uses_custom_404(self):
         response = Client().get('/not-a-real-page')

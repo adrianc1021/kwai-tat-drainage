@@ -38,7 +38,7 @@
 
 如要使用正式分析整合，請把 OAuth client id、client secret 及 refresh token 只放在 server environment variables。後台只保存 property ID、連接開關、同步時間及錯誤摘要，不會把 secret 或 token 傳到瀏覽器。
 
-啟動命令只會在資料庫沒有帳戶時建立一次管理員；之後移除這兩個環境變數亦不會刪除帳戶。後台入口為 `/manage/`，圖片入口為 `/manage/media/`。Render 持久化磁碟的 `CMS_DATA_DIR` 必須保留，否則資料庫、上載圖片及草稿會隨部署消失。
+啟動命令只會在資料庫沒有帳戶時建立一次管理員；之後移除這兩個環境變數亦不會刪除帳戶。正式網站及後台使用 `https://rapidflowhk.com/` 及 `https://rapidflowhk.com/manage/`，舊的 Render 網址會永久轉址到新網域。圖片入口為 `/manage/media/`；Render 持久化磁碟的 `CMS_DATA_DIR` 必須保留，否則資料庫、上載圖片及草稿會隨部署消失。
 
 正式環境仍需使用 HTTPS、外部存取控制、備份監察及正式網域設定：
 
