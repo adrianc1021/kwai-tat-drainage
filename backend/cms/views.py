@@ -43,7 +43,7 @@ def trigger_public_deploy():
             if 200 <= response.status < 300:
                 return 'triggered'
             return 'failed'
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError, OSError):
         return 'failed'
 
 def guard(permission):
